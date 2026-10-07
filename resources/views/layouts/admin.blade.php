@@ -80,7 +80,7 @@
             <a href="{{ route('promociones.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('promociones.*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 🎁 Promociones y Ofertas
           <a href="{{ route('productos.control') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('productos.control') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
-                🎁 Control de Productos
+                📦 Control de Productos
             </a>
         </div>
     </div>
@@ -140,6 +140,10 @@
         <div x-show="openConfig && sidebarExpanded" class="pl-8 mt-1 space-y-1" style="display: none;">
             <a href="{{ route('usuarios.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('usuarios*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">👤 Gestión de Usuarios</a>
             
+            <a href="{{ route('roles.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('roles*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
+                🛡️ Gestión de Roles
+            </a>
+
             <a href="{{ route('cotizaciones.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('cotizaciones*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
             💱 Cotizaciones de Moneda
             </a>

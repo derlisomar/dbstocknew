@@ -18,7 +18,18 @@ class Venta extends Model
         'vta_tipo',
         'vta_formapago',
         'vta_total',
-        'vta_estado'
+        'vta_estado',
+
+        // Campos fiscales y de pago que se perdían:
+        'vta_timbrado',
+        'vta_nro_factura',
+        'vta_total_exenta',
+        'vta_total_iva5',
+        'vta_total_iva10',
+        'vta_formapago',
+        'nro_transferencia',
+        'vta_moneda'
+
     ];
 
     public function detalles()

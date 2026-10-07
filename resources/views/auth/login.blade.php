@@ -82,9 +82,10 @@
             <form method="POST" action="{{ route('login') }}" class="space-y-5">
                 @csrf
 
+    
                 <div>
-                    <label class="block text-sm font-medium text-white mb-2">Usuario <span class="text-red-500">*</span></label>
-                    <input type="text" name="usu_usuario" value="{{ old('usu_usuario') }}" placeholder="Ingresa tu usuario (ej. admin)" class="w-full rounded border border-gray-700 bg-[#1c2434] py-3.5 px-5 text-white placeholder-gray-500 text-sm focus:border-blue-500 outline-none transition" required autofocus>
+                    <label class="block text-sm font-medium text-white mb-2">Usuario o Correo Electrónico <span class="text-red-500">*</span></label>
+                    <input type="text" name="login_input" value="{{ old('login_input') }}" placeholder="Ingresa tu usuario o correo (ej. admin@correo.com)" class="w-full rounded border border-gray-700 bg-[#1c2434] py-3.5 px-5 text-white placeholder-gray-500 text-sm focus:border-blue-500 outline-none transition" required autofocus>
                 </div>
 
                 <div>

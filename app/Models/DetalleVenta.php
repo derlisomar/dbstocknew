@@ -15,7 +15,8 @@ class DetalleVenta extends Model
         'pro_id',
         'det_cantidad',
         'det_preciounitario',
-        'det_subtotal'
+        'det_subtotal',
+        'det_preciocosto' // <--- Añadido para el costo histórico del producto
     ];
 
     public function producto()

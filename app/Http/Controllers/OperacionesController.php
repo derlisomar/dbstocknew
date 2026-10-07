@@ -208,7 +208,7 @@ public function historialVentas(Request $request)
     }
 
     public function procesarDevolucion(Request $request, $id)
-{
+    {
     try {
         \Illuminate\Support\Facades\DB::beginTransaction();
 

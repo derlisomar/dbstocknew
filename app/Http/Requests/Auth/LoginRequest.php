@@ -25,35 +25,36 @@ class LoginRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
-public function rules(): array
-{
-    return [
-        'usu_usuario' => ['required', 'string'],
-        'password' => ['required', 'string'],
-    ];
-}
-
-    /**
-     * Attempt to authenticate the request's credentials.
-     *
-     * @throws ValidationException
-     */
-public function authenticate(): void
-{
-    $this->ensureIsNotRateLimited();
-
-    // Autenticar usando 'usu_usuario' y 'usu_password'
-    if (! Auth::attempt(['usu_usuario' => $this->input('usu_usuario'), 'password' => $this->input('password')], $this->boolean('remember'))) {
-        RateLimiter::hit($this->throttleKey());
-
-        throw ValidationException::withMessages([
-            'usu_usuario' => trans('auth.failed'),
-        ]);
+    public function rules(): array
+    {
+        return [
+            // Cambiamos 'usu_usuario' por 'login_input'
+            'login_input' => ['required', 'string'],
+            'password' => ['required', 'string'],
+        ];
     }
 
-    RateLimiter::clear($this->throttleKey());
-}
+    public function authenticate(): void
+    {
+        $this->ensureIsNotRateLimited();
 
+        // Capturamos lo que el usuario escribió en el formulario
+        $loginInput = $this->input('login_input');
+        
+        // Detectar automáticamente: si tiene un "@" y formato de email, buscamos en 'usu_email', sino en 'usu_usuario'
+        $fieldType = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'usu_email' : 'usu_usuario';
+
+        // Intentar iniciar sesión usando la columna correcta
+        if (! Auth::attempt([$fieldType => $loginInput, 'password' => $this->input('password')], $this->boolean('remember'))) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'login_input' => 'Estas credenciales no coinciden con nuestros registros.',
+            ]);
+        }
+
+        RateLimiter::clear($this->throttleKey());
+    }
     /**
      * Ensure the login request is not rate limited.
      *

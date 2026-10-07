@@ -90,6 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/operaciones/reporte-abc', [App\Http\Controllers\ReporteRentabilidadController::class, 'index'])->name('operaciones.reporte_abc');
     Route::get('/operaciones/reporte-abc/excel', [App\Http\Controllers\ReporteRentabilidadController::class, 'exportarExcel'])->name('operaciones.reporte_abc.excel');
     Route::get('/operaciones/reporte-abc/pdf', [App\Http\Controllers\ReporteRentabilidadController::class, 'exportarPdf'])->name('operaciones.reporte_abc.pdf');
+    Route::resource('roles', App\Http\Controllers\RolController::class)->middleware('auth');
 
 });
 
