@@ -19,6 +19,10 @@ class UsuarioController extends Controller
 
     public function store(Request $request)
     {
+        if ($mensajeLimite = \App\Services\ConfiguracionService::limiteExcedido('usuarios')) {
+            return back()->withInput()->with('error', $mensajeLimite);
+        }
+
         $request->validate([
             'usu_nombre' => 'required|string|max:100',
             'usu_apellido' => 'required|string|max:100',

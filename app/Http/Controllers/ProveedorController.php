@@ -46,7 +46,14 @@ class ProveedorController extends Controller
 
     public function destroy($id)
     {
-        Proveedor::findOrFail($id)->delete();
+        $proveedor = Proveedor::findOrFail($id);
+
+        // Un proveedor con compras no se borra: se perdería el historial de lo comprado y lo adeudado.
+        if (\Illuminate\Support\Facades\Schema::hasTable('compras') && \Illuminate\Support\Facades\DB::table('compras')->where('prov_id', $proveedor->prov_id)->exists()) {
+            return redirect()->route('proveedores.index')->with('error', 'Este proveedor tiene compras registradas, por eso no se puede eliminar.');
+        }
+
+        $proveedor->delete();
         return redirect()->route('proveedores.index')->with('success', 'Proveedor eliminado correctamente.');
     }
 }

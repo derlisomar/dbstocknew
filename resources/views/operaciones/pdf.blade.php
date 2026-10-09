@@ -22,7 +22,7 @@
         <button onclick="window.print()" style="padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🖨️ Imprimir / Guardar PDF</button>
     </div>
 
-    <h2>dbstock - Reporte de Historial de Ventas</h2>
+    <h2>{{ \App\Services\ConfiguracionService::nombreNegocio() }} - Reporte de Historial de Ventas</h2>
     <div class="subtitle">Generado el: {{ date('d/m/Y H:i') }}</div>
 
     <table>

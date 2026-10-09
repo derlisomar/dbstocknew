@@ -17,7 +17,7 @@
 <body onload="window.print(); window.onafterprint = function(){ window.close(); }">
     @php($sucursal = $cobro->sesion->caja->sucursal ?? null)
     <div class="text-center">
-        <h2 style="margin: 0; font-size: 16px;">MI EMPRESA S.A.</h2>
+        <h2 style="margin: 0; font-size: 16px;">{{ \App\Services\ConfiguracionService::get('negocio_nombre', 'MI EMPRESA S.A.') }}</h2>
         @if($sucursal)
             <p style="margin: 2px 0;">{{ $sucursal->suc_direccion }}</p>
             <p style="margin: 2px 0;">TELEFONO: {{ $sucursal->suc_telefono }}</p>

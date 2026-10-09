@@ -45,6 +45,10 @@ return [
         'CAJA_OPERAR_AJENA'   => ['modulo' => 'FINANZAS',      'descripcion' => 'Cerrar, transferir y registrar movimientos en cajas abiertas por otra persona (responsable)'],
         'AUDITORIA_VER'       => ['modulo' => 'AUDITORIA',     'descripcion' => 'Ver el registro de auditoría (quién hizo qué)'],
         'STOCK_AJUSTAR'       => ['modulo' => 'CATALOGO',      'descripcion' => 'Ajustar stock, ingresar mercadería y hacer conteos (queda en el historial)'],
+        'COMPRAS_REGISTRAR'   => ['modulo' => 'COMPRAS',       'descripcion' => 'Registrar compras a proveedores y ver el listado de compras'],
+        'COMPRAS_ANULAR'      => ['modulo' => 'COMPRAS',       'descripcion' => 'Anular compras y devolver mercadería al proveedor'],
+        'PAGOS_PROVEEDORES'   => ['modulo' => 'COMPRAS',       'descripcion' => 'Ver cuentas a pagar y registrar o anular pagos a proveedores'],
+        'PRESUPUESTOS_GESTIONAR' => ['modulo' => 'VENTAS',     'descripcion' => 'Crear, editar, aceptar, rechazar y renovar presupuestos (quien vende en caja puede verlos y convertirlos en venta)'],
         'REPORTES_VER'        => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes (rentabilidad / curva ABC)'],
     ],
 

@@ -15,6 +15,10 @@ class SucursalController extends Controller
 
     public function store(Request $request)
     {
+        if ($mensajeLimite = \App\Services\ConfiguracionService::limiteExcedido('sucursales')) {
+            return back()->withInput()->with('error', $mensajeLimite);
+        }
+
         $request->validate([
             'suc_nombre' => 'required|string|max:100',
             'suc_direccion' => 'nullable|string',

@@ -20,6 +20,7 @@ class CajaMovimiento extends Model
         'mov_forma_pago',
         'vta_id',
         'cob_id',
+        'pag_id',
     ];
 
     public function sesion()

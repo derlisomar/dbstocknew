@@ -8,11 +8,13 @@ use App\Models\Cliente;
 use App\Models\Cotizacion;
 use App\Models\CuentasCobrar;
 use App\Models\DetalleVenta;
+use App\Models\Presupuesto;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\Venta;
 use App\Services\CajaService;
 use App\Services\PrecioService;
+use App\Services\PresupuestoService;
 use App\Services\StockService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -46,10 +48,34 @@ class PdvController extends Controller
             $producto->pro_preciomayorista = (float) $producto->pro_preciomayorista;
         }
 
-        return view('pdv.index', compact('productos', 'clientes', 'cotizaciones'));
+        // Si viene de un presupuesto (/pdv?presupuesto=ID) se precargan cliente y productos.
+        // Los precios se vuelven a calcular con las reglas vigentes; el stock se controla al cobrar.
+        $precarga = null;
+        if (request()->filled('presupuesto')) {
+            $pre = Presupuesto::with('detalles')->find((int) request('presupuesto'));
+
+            try {
+                if (! $pre) {
+                    throw new NegocioException('El presupuesto que querés vender no existe.');
+                }
+                app(PresupuestoService::class)->verificarConvertible($pre);
+
+                $precarga = [
+                    'id' => $pre->pre_id,
+                    'numero' => $pre->numero,
+                    'cli_id' => $pre->cli_id,
+                    'cliente_nombre' => $pre->nombre_cliente,
+                    'items' => $pre->detalles->map(fn ($d) => ['pro_id' => (int) $d->pro_id, 'cantidad' => (float) $d->dpr_cantidad])->values(),
+                ];
+            } catch (NegocioException $e) {
+                session()->flash('error', $e->getMessage());
+            }
+        }
+
+        return view('pdv.index', compact('productos', 'clientes', 'cotizaciones', 'precarga'));
     }
 
-    public function store(Request $request, PrecioService $precios, CajaService $cajas, StockService $stock)
+    public function store(Request $request, PrecioService $precios, CajaService $cajas, StockService $stock, PresupuestoService $presupuestos)
     {
         // 1. VALIDACIÓN. El navegador solo envía QUÉ se vende y CUÁNTO.
         //    Precios, subtotales y total los calcula este servidor.
@@ -60,6 +86,7 @@ class PdvController extends Controller
             'nro_transferencia' => ['nullable', 'required_unless:forma_pago,EFECTIVO', 'string', 'max:100'],
             'moneda' => ['required', 'in:GS,USD,BRL'],
             'caj_id' => ['nullable', 'integer'],
+            'presupuesto_id' => ['nullable', 'integer'],
             'carrito' => ['required', 'array', 'min:1', 'max:200'],
             'carrito.*.pro_id' => ['required', 'integer', 'exists:productos,pro_id'],
             'carrito.*.cantidad' => ['required', 'numeric', 'gt:0', 'max:100000'],
@@ -82,9 +109,18 @@ class PdvController extends Controller
         $datos = $validador->validated();
         $usuario = $request->user();
 
+        // Según el plan del negocio: sin el módulo de varias monedas solo se cobra en guaraníes,
+        // y sin el de cobranzas no se vende a crédito.
+        if ($datos['moneda'] !== 'GS' && ! \App\Services\ConfiguracionService::modulo('multimoneda')) {
+            return response()->json(['success' => false, 'message' => 'Este negocio solo vende en guaraníes.'], 422);
+        }
+        if ($datos['vta_tipo'] === 'CREDITO' && ! \App\Services\ConfiguracionService::modulo('cobranzas')) {
+            return response()->json(['success' => false, 'message' => 'Este negocio no tiene habilitada la venta a crédito.'], 422);
+        }
+
         try {
             // 2. TODO ADENTRO DE UNA TRANSACCIÓN: si algo falla, no queda nada a medias.
-            $resultado = DB::transaction(function () use ($datos, $usuario, $precios, $cajas, $stock) {
+            $resultado = DB::transaction(function () use ($datos, $usuario, $precios, $cajas, $stock, $presupuestos) {
                 $monedaVenta = $datos['moneda'];
 
                 // A. Sesión de caja abierta del usuario, en la caja de esta terminal
@@ -253,6 +289,11 @@ class PdvController extends Controller
                     'vta_total_iva5' => round($totalIva5, 2),
                     'vta_total_iva10' => round($totalIva10, 2),
                 ]);
+
+                // F2. Si la venta viene de un presupuesto, queda facturado en la misma transacción.
+                if (! empty($datos['presupuesto_id'])) {
+                    $presupuestos->marcarFacturado((int) $datos['presupuesto_id'], $venta->vta_id);
+                }
 
                 // G. Ingreso a caja (solo contado), convertido a la moneda en que se cobró.
                 //    Queda en el libro con su forma de pago, pero SOLO el efectivo suma al saldo físico.

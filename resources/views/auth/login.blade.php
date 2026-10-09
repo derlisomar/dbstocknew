@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesión - dbstock</title>
+    <title>Iniciar sesión - {{ \App\Services\ConfiguracionService::nombreNegocio() }}</title>
     <!-- Google Fonts Outfit -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Estilos de Tailwind con Vite -->
@@ -103,7 +103,6 @@
                         <input type="checkbox" name="remember" class="w-4 h-4 rounded border-gray-700 bg-[#1c2434] text-blue-600 focus:ring-blue-500 cursor-pointer">
                         <span class="text-gray-400 group-hover:text-gray-300">Mantenme conectado</span>
                     </label>
-               
                 </div>
 
                 <button type="submit" class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition">

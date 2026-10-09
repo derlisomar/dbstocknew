@@ -7,6 +7,7 @@
         'ANULACION_VENTA' => 'Anulación de venta', 'DEVOLUCION' => 'Devolución',
         'INGRESO_MERCADERIA' => 'Ingreso de mercadería', 'AJUSTE_ENTRADA' => 'Ajuste (entrada)',
         'AJUSTE_SALIDA' => 'Ajuste (salida)', 'CONTEO' => 'Conteo físico',
+        'COMPRA' => 'Compra a proveedor', 'ANULACION_COMPRA' => 'Anulación de compra', 'DEVOLUCION_PROVEEDOR' => 'Devolución a proveedor',
     ];
     $campo = 'rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 py-2 px-3 text-sm text-gray-800 dark:text-white';
 @endphp

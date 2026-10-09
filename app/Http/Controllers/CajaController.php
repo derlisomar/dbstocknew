@@ -18,6 +18,10 @@ class CajaController extends Controller
 
   public function store(Request $request)
 {
+        if ($mensajeLimite = \App\Services\ConfiguracionService::limiteExcedido('cajas')) {
+            return back()->withInput()->with('error', $mensajeLimite);
+        }
+
     $request->validate([
         'suc_id' => 'required|exists:sucursales,suc_id',
         'caj_nombre' => 'required|string|max:50',

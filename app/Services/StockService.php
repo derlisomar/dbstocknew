@@ -17,6 +17,7 @@ class StockService
     public const TIPOS = [
         'SALDO_INICIAL', 'CARGA_INICIAL', 'VENTA', 'ANULACION_VENTA', 'DEVOLUCION',
         'INGRESO_MERCADERIA', 'AJUSTE_ENTRADA', 'AJUSTE_SALIDA', 'CONTEO',
+        'COMPRA', 'ANULACION_COMPRA', 'DEVOLUCION_PROVEEDOR',
     ];
 
     /** Tipos que el usuario puede cargar a mano desde la pantalla de Inventario. */

@@ -8,6 +8,12 @@
     <!-- ================= SECCIÓN IZQUIERDA: Buscador Rápido y Carrito ================= -->
     <div class="xl:col-span-8 flex flex-col gap-4 h-full">
         
+        <!-- Aviso cuando la venta viene de un presupuesto -->
+        <div x-show="precarga" x-cloak class="flex items-center justify-between gap-3 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-2 text-sm text-blue-800 dark:text-blue-200">
+            <span>Vendiendo el presupuesto <b x-text="precarga ? precarga.numero : ''"></b>. Los precios son los vigentes de hoy y el stock se controla al cobrar.</span>
+            <a href="{{ route('pdv.index') }}" class="font-semibold underline whitespace-nowrap">Quitar presupuesto</a>
+        </div>
+
         <!-- Buscador Interactivo de Productos (Estilo Dropdown) -->
         <div class="bg-white dark:bg-[#1c2434] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-4 relative" x-data="{ openBusquedaProd: false }">
             <label class="block text-[11px] uppercase tracking-wider font-black text-gray-500 dark:text-gray-400 mb-2">
@@ -185,6 +191,7 @@
 
             <!-- Configuraciones de Pago -->
             <div class="grid grid-cols-2 gap-4">
+                @modulo('multimoneda')
                 <div>
                     <label class="block text-xs uppercase font-bold text-gray-500 dark:text-gray-400 mb-2">Moneda</label>
                     <select x-model="moneda" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-2.5 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
@@ -193,11 +200,12 @@
                         <option value="BRL">Reales (R$)</option>
                     </select>
                 </div>
+                @endmodulo
                 <div>
                     <label class="block text-xs uppercase font-bold text-gray-500 dark:text-gray-400 mb-2">Condición</label>
                     <select x-model="vta_tipo" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-2.5 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                         <option value="CONTADO">Contado</option>
-                        <option value="CREDITO">Crédito</option>
+                        @modulo('cobranzas')<option value="CREDITO">Crédito</option>@endmodulo
                     </select>
                 </div>
             </div>
@@ -319,6 +327,7 @@
             forma_pago: 'EFECTIVO', 
             nro_transferencia: '',
             cotizaciones: @json($cotizaciones),
+            precarga: @json($precarga ?? null),
             showModalCliente: false,
             nuevoCli: { cli_ruc_ci: '', cli_nombre: '', cli_telefono: '', cli_es_mayorista: false },
 
@@ -333,6 +342,39 @@
                     // Simplemente llamamos a la función segura que ya creamos abajo
                     this.actualizarPreciosMayorista();
                 });
+
+                if (this.precarga) { this.cargarPresupuesto(); }
+            },
+
+            // --- VENTA DESDE UN PRESUPUESTO: carga cliente y productos ---
+            cargarPresupuesto() {
+                const avisos = [];
+                const cli = this.precarga.cli_id ? this.clientes.find(c => c.cli_id == this.precarga.cli_id) : null;
+                if (cli) {
+                    this.seleccionarCliente(cli);
+                } else {
+                    avisos.push('El presupuesto es para «' + this.precarga.cliente_nombre + '», que no es un cliente registrado. Elegí o creá el cliente antes de cobrar.');
+                }
+
+                this.precarga.items.forEach(it => {
+                    const pro = this.productos.find(p => p.pro_id == it.pro_id);
+                    if (!pro) { avisos.push('Un producto del presupuesto ya no está disponible.'); return; }
+                    const stock = parseFloat(pro.pro_stockactual) || 0;
+                    if (stock < 1) { avisos.push('«' + pro.pro_nombre + '» no tiene stock y no se agregó.'); return; }
+
+                    this.agregarAlCarrito(pro);
+                    const i = this.carrito.findIndex(x => x.pro_id === pro.pro_id);
+                    if (i === -1) { return; }
+                    const pedido = parseFloat(it.cantidad) || 1;
+                    const cantidad = Math.min(pedido, stock);
+                    if (cantidad < pedido) { avisos.push('«' + pro.pro_nombre + '»: se presupuestaron ' + pedido + ' y solo hay ' + stock + ' en stock.'); }
+                    this.carrito[i].cantidad = cantidad;
+                    this.carrito[i].subtotal = cantidad * this.carrito[i].precio;
+                });
+
+                if (avisos.length) {
+                    setTimeout(() => Swal.fire({ title: 'Revisá antes de cobrar', html: avisos.map(a => '<p style="margin:4px 0">' + a + '</p>').join(''), icon: 'warning' }), 300);
+                }
             },
 
             // --- FUNCIONES PARA CLIENTES ---
@@ -498,6 +540,7 @@
                         nro_transferencia: this.nro_transferencia,
                         moneda: this.moneda,
                         carrito: this.carrito,
+                        presupuesto_id: this.precarga ? this.precarga.id : null,
                         caj_id: localStorage.getItem('dbstock_terminal_id') 
                     })
                 })

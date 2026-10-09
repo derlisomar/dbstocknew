@@ -20,8 +20,8 @@
     <div style="text-align:center;font-weight:bold;border:1px solid #000;margin-bottom:5px;padding:2px;">*** COPIA / REIMPRESION ***</div>
 @endif
     <div class="text-center">
-        <h2 style="margin: 0; font-size: 16px;">MI EMPRESA S.A.</h2>
-        <p style="margin: 2px 0;">RUC: 80001234-5</p>
+        <h2 style="margin: 0; font-size: 16px;">{{ \App\Services\ConfiguracionService::get('negocio_nombre', 'MI EMPRESA S.A.') }}</h2>
+        <p style="margin: 2px 0;">RUC: {{ \App\Services\ConfiguracionService::get('negocio_ruc', '80001234-5') }}</p>
         <p style="margin: 2px 0;">{{ $venta->sucursal->suc_actividad_economica }}</p>
         <p style="margin: 2px 0;">{{ $venta->sucursal->suc_direccion }}</p>
         <p style="margin: 2px 0;">TELEFONO: {{ $venta->sucursal->suc_telefono }}</p>
@@ -93,7 +93,7 @@
     <div class="text-center" style="margin-top: 10px;">
         <p>VERIFIQUE SU COMPRA Y VUELTO EN CAJA. NO ACEPTAMOS RECLAMOS POSTERIORES</p>
         <p>ORIGINAL: CLIENTE - COMPRADOR</p>
-        <p class="bold">***GRACIAS POR SU COMPRA***</p>
+        <p class="bold">{{ \App\Services\ConfiguracionService::get('negocio_pie_ticket', '***GRACIAS POR SU COMPRA***') }}</p>
     </div>
 </body>
 </html>

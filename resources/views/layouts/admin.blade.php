@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>dbstock - Panel de Control</title>
+    <title>{{ \App\Services\ConfiguracionService::nombreNegocio() }} - Panel de Control</title>
     <!-- Google Fonts Outfit -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -32,10 +32,10 @@
             <a href="{{ route('dashboard') }}" class="flex items-center gap-2 overflow-hidden">
             
             <!-- Logo pequeño (colapsado) -->
-            <img x-show="!sidebarExpanded" src="{{ asset('img/logo_mini.png') }}" alt="Logo Mini" class="h-10 w-auto object-contain">
+            <img x-show="!sidebarExpanded" src="{{ \App\Services\ConfiguracionService::logoUrl() ?? asset('img/logo_mini.png') }}" alt="Logo Mini" class="h-10 w-auto object-contain">
             
             <!-- Logo principal más grande y estético (expandido) -->
-            <img x-show="sidebarExpanded" src="{{ asset('img/logo.png') }}" alt="dbstock" class="h-12 w-auto object-contain">
+            <img x-show="sidebarExpanded" src="{{ \App\Services\ConfiguracionService::logoUrl() ?? asset('img/logo.png') }}" alt="{{ \App\Services\ConfiguracionService::nombreNegocio() }}" class="h-12 w-auto object-contain">
             
             </a>
         </div>
@@ -56,6 +56,16 @@
     </a>
     @endcan
 
+    @modulo('presupuestos')
+    @canany(['PRESUPUESTOS_GESTIONAR','PDV_USAR'])
+    <a href="{{ route('presupuestos.index') }}" class="flex items-center gap-4 rounded-lg py-3 px-3 text-sm font-medium duration-300 hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('presupuestos*') ? 'bg-gray-100 dark:bg-gray-800 text-blue-600 dark:text-white border-l-4 border-blue-600' : 'text-gray-600 dark:text-gray-400' }}">
+        <span class="text-lg">📝</span>
+        <span x-show="sidebarExpanded" class="whitespace-nowrap">Presupuestos</span>
+    </a>
+    @endcanany
+    @endmodulo
+
+    @modulo('cobranzas')
     @can('COBRANZAS_REGISTRAR')
     <a href="{{ route('cobranzas.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('cobranzas*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
          <span class="text-lg">💵</span>
@@ -66,6 +76,7 @@
         <span x-show="sidebarExpanded" class="whitespace-nowrap">Historial de Cobros</span>
     </a>
     @endcan
+    @endmodulo
 
     <!-- 3. Operaciones (Desplegable) -->
     @canany(['VENTAS_HISTORIAL','CLIENTES_CREDITO','REPORTES_VER','CATALOGO_GESTIONAR','STOCK_AJUSTAR'])
@@ -82,26 +93,34 @@
             @can('VENTAS_HISTORIAL')
             <a href="{{ route('operaciones.ventas') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('operaciones/ventas*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📜 Control de Ventas</a>
             @endcan
+            @modulo('cobranzas')
             @can('CLIENTES_CREDITO')
             <a href="{{ route('operaciones.clientes_control') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('operaciones.clientes_control') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 📊 Control de Clientes
             </a>
             @endcan
+            @endmodulo
+           @modulo('reportes_avanzados')
            @can('REPORTES_VER')
            <a href="{{ route('operaciones.reporte_abc') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('operaciones.reporte_abc') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 📊 Análisis ABC y Rentabilidad
             </a>
            @endcan
+           @endmodulo
+            @modulo('promociones')
             @can('CATALOGO_GESTIONAR')
             <a href="{{ route('promociones.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('promociones.*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 🎁 Promociones y Ofertas
             </a>
             @endcan
+            @endmodulo
+            @modulo('inventario')
             @canany(['CATALOGO_GESTIONAR','STOCK_AJUSTAR'])
             <a href="{{ route('inventario.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('inventario.*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 🗃️ Inventario y Stock
             </a>
             @endcanany
+            @endmodulo
             @can('CATALOGO_GESTIONAR')
             <a href="{{ route('productos.control') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('productos.control') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 📦 Control de Productos
@@ -110,6 +129,30 @@
         </div>
     </div>
     @endcanany
+
+    <!-- Compras y proveedores (Desplegable) -->
+    @modulo('compras')
+    @canany(['COMPRAS_REGISTRAR','COMPRAS_ANULAR','PAGOS_PROVEEDORES'])
+    <div x-data="{ openCompras: {{ request()->is('compras*', 'cuentas-pagar*') ? 'true' : 'false' }} }">
+        <button @click="openCompras = !openCompras" class="flex items-center justify-between w-full rounded-lg py-3 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
+            <div class="flex items-center gap-4">
+                <span class="text-lg">🚚</span>
+                <span x-show="sidebarExpanded" class="whitespace-nowrap">Compras y Proveedores</span>
+            </div>
+            <span x-show="sidebarExpanded" :class="openCompras ? 'rotate-180' : ''" class="transition-transform duration-200 text-xs">▼</span>
+        </button>
+        <div x-show="openCompras && sidebarExpanded" class="pl-8 mt-1 space-y-1" style="display: none;">
+            @can('COMPRAS_REGISTRAR')
+            <a href="{{ route('compras.create') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('compras.create') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">➕ Registrar compra</a>
+            @endcan
+            <a href="{{ route('compras.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('compras.index', 'compras.show') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🧾 Listado de compras</a>
+            @canany(['PAGOS_PROVEEDORES','COMPRAS_REGISTRAR','COMPRAS_ANULAR'])
+            <a href="{{ route('cuentas_pagar.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('cuentas_pagar.*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📒 Cuentas a pagar</a>
+            @endcanany
+        </div>
+    </div>
+    @endcanany
+    @endmodulo
 
     <!-- 3. Finanzas y Cajas (Desplegable) -->
     @canany(['FINANZAS_VER','CAJA_ABRIR_CERRAR'])
@@ -163,12 +206,16 @@
             @can('CATALOGO_GESTIONAR')
             <a href="{{ route('categorias.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('categorias*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🏷️ Categorías</a>
             @endcan
+            @modulo('compras')
             @can('CATALOGO_GESTIONAR')
             <a href="{{ route('proveedores.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('proveedores*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🚚 Proveedores</a>
             @endcan
+            @endmodulo
+            @modulo('depositos')
             @can('CONFIG_GESTIONAR')
             <a href="{{ route('depositos.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('depositos*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🏭 Depósitos</a>
             @endcan
+            @endmodulo
             @can('CONFIG_GESTIONAR')
             <a href="{{ route('sucursales.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('sucursales*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🏢 Sucursales</a>
             @endcan
@@ -201,11 +248,13 @@
             </a>
             @endcan
 
+            @modulo('auditoria')
             @can('AUDITORIA_VER')
             <a href="{{ route('auditoria.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('auditoria*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 🕵️ Auditoría
             </a>
             @endcan
+            @endmodulo
 
             @can('CONFIG_GESTIONAR')
             <a href="{{ route('cotizaciones.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('cotizaciones*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
@@ -334,6 +383,10 @@
 
         <main class="p-3 md:p-4 w-full bg-gray-100 dark:bg-[#111827] min-h-[calc(100vh-4rem)]">
             {{-- Avisos generales (las pantallas de ventas y sucursales ya muestran los suyos) --}}
+            @php $licencia = \App\Services\LicenciaService::estado(); @endphp
+            @if($licencia['mensaje'])
+                <div style="margin-bottom:16px;padding:12px 16px;border-radius:10px;font-weight:600;font-size:14px;{{ $licencia['estado'] === 'SOLO_LECTURA' ? 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5' : 'background:#fef3c7;color:#92400e;border:1px solid #fcd34d' }}">{{ $licencia['mensaje'] }}</div>
+            @endif
             @if(session('error') && !request()->routeIs('operaciones.ventas', 'sucursales.*'))
                 <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-900/30 dark:text-red-300">{{ session('error') }}</div>
             @endif

@@ -102,6 +102,16 @@ class VerificarSistema extends Command
             $this->anotar($descuadres === 0 ? 'OK' : 'AVISO', 'Stock coincide con su historial', $descuadres === 0 ? '' : "{$descuadres} producto(s) no coinciden: corré inventario:conciliar");
         }
 
+        $parte5 = Schema::hasTable('compras') && Schema::hasTable('cuentas_pagar') && Schema::hasColumn('caja_movimientos', 'pag_id');
+        $this->anotar($parte5 ? 'OK' : 'FALLA', 'Compras y cuentas a pagar (Parte 5)', $parte5 ? '' : 'Corré la migración de la Parte 5');
+
+        $parte6 = Schema::hasTable('presupuestos') && Schema::hasTable('detalle_presupuestos');
+        $this->anotar($parte6 ? 'OK' : 'FALLA', 'Presupuestos (Parte 6)', $parte6 ? '' : 'Corré la migración de la Parte 6');
+
+        $parte8 = Schema::hasTable('configuracion_sistema') && Schema::hasTable('planes') && Schema::hasTable('licencia_pagos');
+        $this->anotar($parte8 ? 'OK' : 'FALLA', 'Panel del vendedor (Parte 8)', $parte8 ? '' : 'Corré la migración de la Parte 8');
+        $this->anotar(config('vendedor.clave_hash') ? 'OK' : 'AVISO', 'Clave del panel del vendedor', config('vendedor.clave_hash') ? '' : 'Falta VENDEDOR_CLAVE_HASH en .env (php artisan vendedor:clave)');
+
         if ($driver === 'pgsql') {
             $codigoUnico = DB::table('pg_indexes')->where('indexname', 'uq_productos_codigo')->exists();
             $this->anotar($codigoUnico ? 'OK' : 'AVISO', 'Código de producto único', $codigoUnico ? '' : 'Hay códigos repetidos o falta el índice: revisá y volvé a correr la migración de la Parte 4');

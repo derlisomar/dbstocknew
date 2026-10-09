@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\AuditoriaController;
+use App\Http\Controllers\CompraController;
+use App\Http\Controllers\CuentaPagarController;
 use App\Http\Controllers\InventarioController;
+use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\CajaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
@@ -23,6 +26,10 @@ use App\Http\Controllers\ReporteRentabilidadController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\Vendedor\AccesoController as VendedorAcceso;
+use App\Http\Controllers\Vendedor\EstructuraController as VendedorEstructura;
+use App\Http\Controllers\Vendedor\LicenciaController as VendedorLicencia;
+use App\Http\Controllers\Vendedor\PanelController as VendedorPanel;
 use Illuminate\Support\Facades\Route;
 
 // Página de bienvenida e inicio
@@ -39,7 +46,7 @@ Route::get('/', function () {
 |              (tabla permisos / rol_permisos; se asignan en "Gestión de Roles").
 |              Los roles de config/permisos.php (Administrador) pasan siempre.
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'licencia'])->group(function () {
 
     // Inicio: lo ve cualquier usuario con sesión (es a donde llega tras el login)
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -53,7 +60,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('permiso:CONFIG_GESTIONAR')->group(function () {
         Route::resource('sucursales', SucursalController::class);
-        Route::resource('depositos', DepositoController::class);
+        Route::resource('depositos', DepositoController::class)->middleware('modulo:depositos');
         Route::resource('cajas', CajaController::class);
         Route::resource('cotizaciones', CotizacionController::class);
         Route::get('/configuracion/terminal', function () {
@@ -62,18 +69,60 @@ Route::middleware('auth')->group(function () {
     });
 
     // ---------------------------------------------------------------- Inventario (historial de stock)
+    Route::middleware('modulo:inventario')->group(function () {
     Route::get('/inventario', [InventarioController::class, 'index'])
         ->middleware('permiso:CATALOGO_GESTIONAR,STOCK_AJUSTAR')->name('inventario.index');
     Route::post('/inventario/movimiento', [InventarioController::class, 'registrar'])
         ->middleware('permiso:STOCK_AJUSTAR')->name('inventario.registrar');
+    });
+
+    // ---------------------------------------------------------------- Compras y cuentas a pagar
+    Route::middleware('modulo:compras')->group(function () {
+    Route::middleware('permiso:COMPRAS_REGISTRAR')->group(function () {
+        Route::get('/compras/nueva', [CompraController::class, 'create'])->name('compras.create');
+        Route::post('/compras', [CompraController::class, 'store'])->name('compras.store');
+    });
+    Route::middleware('permiso:COMPRAS_REGISTRAR,COMPRAS_ANULAR,PAGOS_PROVEEDORES')->group(function () {
+        Route::get('/compras', [CompraController::class, 'index'])->name('compras.index');
+        Route::get('/compras/{id}', [CompraController::class, 'show'])->whereNumber('id')->name('compras.show');
+    });
+    Route::middleware('permiso:COMPRAS_ANULAR')->group(function () {
+        Route::post('/compras/{id}/anular', [CompraController::class, 'anular'])->whereNumber('id')->name('compras.anular');
+        Route::post('/compras/{id}/devolver', [CompraController::class, 'devolver'])->whereNumber('id')->name('compras.devolver');
+    });
+    Route::get('/cuentas-pagar', [CuentaPagarController::class, 'index'])
+        ->middleware('permiso:PAGOS_PROVEEDORES,COMPRAS_REGISTRAR,COMPRAS_ANULAR')->name('cuentas_pagar.index');
+    Route::middleware('permiso:PAGOS_PROVEEDORES')->group(function () {
+        Route::post('/cuentas-pagar/{id}/pagar', [CuentaPagarController::class, 'pagar'])->whereNumber('id')->name('cuentas_pagar.pagar');
+        Route::post('/pagos-proveedores/{id}/anular', [CuentaPagarController::class, 'anularPago'])->whereNumber('id')->name('pagos_proveedores.anular');
+    });
+    });
+
+    // ---------------------------------------------------------------- Presupuestos
+    Route::middleware('modulo:presupuestos')->group(function () {
+    Route::middleware('permiso:PRESUPUESTOS_GESTIONAR')->group(function () {
+        Route::get('/presupuestos/nuevo', [PresupuestoController::class, 'create'])->name('presupuestos.create');
+        Route::post('/presupuestos', [PresupuestoController::class, 'store'])->name('presupuestos.store');
+        Route::get('/presupuestos/{id}/editar', [PresupuestoController::class, 'edit'])->whereNumber('id')->name('presupuestos.edit');
+        Route::put('/presupuestos/{id}', [PresupuestoController::class, 'update'])->whereNumber('id')->name('presupuestos.update');
+        Route::post('/presupuestos/{id}/estado', [PresupuestoController::class, 'estado'])->whereNumber('id')->name('presupuestos.estado');
+        Route::post('/presupuestos/{id}/renovar', [PresupuestoController::class, 'renovar'])->whereNumber('id')->name('presupuestos.renovar');
+    });
+    // Quien vende en caja también ve el listado y puede convertir en venta (desde el punto de venta).
+    Route::middleware('permiso:PRESUPUESTOS_GESTIONAR,PDV_USAR')->group(function () {
+        Route::get('/presupuestos', [PresupuestoController::class, 'index'])->name('presupuestos.index');
+        Route::get('/presupuestos/{id}', [PresupuestoController::class, 'show'])->whereNumber('id')->name('presupuestos.show');
+        Route::get('/presupuestos/{id}/imprimir', [PresupuestoController::class, 'imprimir'])->whereNumber('id')->name('presupuestos.imprimir');
+    });
+    });
 
     // ---------------------------------------------------------------- Catálogo
     Route::middleware('permiso:CATALOGO_GESTIONAR')->group(function () {
         Route::resource('productos', ProductoController::class);
         Route::resource('categorias', CategoriaController::class);
-        Route::resource('proveedores', ProveedorController::class);
-        Route::resource('promociones', PromocionController::class);
-        Route::post('promociones/toggle/{id}', [PromocionController::class, 'toggleEstado'])->name('promociones.toggle');
+        Route::resource('proveedores', ProveedorController::class)->middleware('modulo:compras');
+        Route::resource('promociones', PromocionController::class)->middleware('modulo:promociones');
+        Route::post('promociones/toggle/{id}', [PromocionController::class, 'toggleEstado'])->middleware('modulo:promociones')->name('promociones.toggle');
         Route::get('/operaciones/productos-control', [ControlProductoController::class, 'index'])->name('productos.control');
         Route::post('/operaciones/productos-control/toggle/{id}', [ControlProductoController::class, 'toggleEstado']);
     });
@@ -81,7 +130,7 @@ Route::middleware('auth')->group(function () {
     // ---------------------------------------------------------------- Clientes
     Route::resource('clientes', ClienteController::class)->middleware('permiso:CLIENTES_GESTIONAR');
 
-    Route::middleware('permiso:CLIENTES_CREDITO')->group(function () {
+    Route::middleware(['permiso:CLIENTES_CREDITO', 'modulo:cobranzas'])->group(function () {
         Route::get('/operaciones/clientes-control', [OperacionesClienteController::class, 'index'])->name('operaciones.clientes_control');
         Route::post('/operaciones/clientes-control/toggle/{id}', [OperacionesClienteController::class, 'toggleEstado'])->name('operaciones.clientes_control.toggle');
     });
@@ -96,6 +145,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // ---------------------------------------------------------------- Cobranzas
+    Route::middleware('modulo:cobranzas')->group(function () {
     Route::middleware('permiso:COBRANZAS_REGISTRAR')->group(function () {
         Route::get('/cobranzas', [CobranzaController::class, 'index'])->name('cobranzas.index');
         Route::post('/cobranzas/store', [CobranzaController::class, 'store'])->name('cobranzas.store');
@@ -104,10 +154,11 @@ Route::middleware('auth')->group(function () {
     });
     Route::post('/cobranzas/{id}/anular', [CobranzaController::class, 'anular'])
         ->middleware('permiso:COBRANZAS_ANULAR')->name('cobranzas.anular');
+    });
 
     // ---------------------------------------------------------------- Auditoría
     Route::get('/auditoria', [AuditoriaController::class, 'index'])
-        ->middleware('permiso:AUDITORIA_VER')->name('auditoria.index');
+        ->middleware(['permiso:AUDITORIA_VER', 'modulo:auditoria'])->name('auditoria.index');
 
     // ---------------------------------------------------------------- Ventas (historial y correcciones)
     Route::middleware('permiso:VENTAS_HISTORIAL')->group(function () {
@@ -145,10 +196,63 @@ Route::middleware('auth')->group(function () {
         ->middleware('permiso:CAJA_INGRESO_EGRESO')->name('finanzas.ingresos_egresos.store');
 
     // ---------------------------------------------------------------- Reportes
-    Route::middleware('permiso:REPORTES_VER')->group(function () {
+    Route::middleware(['permiso:REPORTES_VER', 'modulo:reportes_avanzados'])->group(function () {
         Route::get('/operaciones/reporte-abc', [ReporteRentabilidadController::class, 'index'])->name('operaciones.reporte_abc');
         Route::get('/operaciones/reporte-abc/excel', [ReporteRentabilidadController::class, 'exportarExcel'])->name('operaciones.reporte_abc.excel');
         Route::get('/operaciones/reporte-abc/pdf', [ReporteRentabilidadController::class, 'exportarPdf'])->name('operaciones.reporte_abc.pdf');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Panel del vendedor del sistema
+|--------------------------------------------------------------------------
+| Acceso privado con clave propia (VENDEDOR_CLAVE_HASH en .env), separado de los usuarios del negocio.
+| Queda a propósito FUERA del grupo 'auth' y de 'licencia': el vendedor siempre puede entrar a arreglar un plan.
+*/
+Route::prefix(config('vendedor.ruta', 'panel-vendedor'))->name('vendedor.')->group(function () {
+    Route::get('/entrar', [VendedorAcceso::class, 'formulario'])->name('login');
+    Route::post('/entrar', [VendedorAcceso::class, 'entrar'])->name('entrar');
+
+    Route::middleware('vendedor')->group(function () {
+        Route::post('/salir', [VendedorAcceso::class, 'salir'])->name('salir');
+        Route::get('/', [VendedorPanel::class, 'resumen'])->name('resumen');
+
+        Route::get('/negocio', [VendedorPanel::class, 'negocio'])->name('negocio');
+        Route::post('/negocio', [VendedorPanel::class, 'guardarNegocio'])->name('negocio.guardar');
+
+        Route::get('/modulos', [VendedorPanel::class, 'modulos'])->name('modulos');
+        Route::post('/modulos', [VendedorPanel::class, 'guardarModulos'])->name('modulos.guardar');
+        Route::post('/modulos/edicion', [VendedorPanel::class, 'aplicarEdicion'])->name('modulos.edicion');
+
+        Route::get('/herramientas', [VendedorPanel::class, 'herramientas'])->name('herramientas');
+        Route::post('/herramientas/preparar', [VendedorPanel::class, 'prepararBase'])->name('herramientas.preparar');
+        Route::post('/herramientas/verificar', [VendedorPanel::class, 'verificar'])->name('herramientas.verificar');
+        Route::post('/herramientas/cache', [VendedorPanel::class, 'limpiarCache'])->name('herramientas.cache');
+
+        Route::get('/estructura', [VendedorEstructura::class, 'index'])->name('estructura');
+        Route::post('/sucursales', [VendedorEstructura::class, 'crearSucursal'])->name('sucursales.crear');
+        Route::post('/sucursales/{id}/estado', [VendedorEstructura::class, 'estadoSucursal'])->whereNumber('id')->name('sucursales.estado');
+        Route::post('/cajas', [VendedorEstructura::class, 'crearCaja'])->name('cajas.crear');
+        Route::post('/cajas/{id}/estado', [VendedorEstructura::class, 'estadoCaja'])->whereNumber('id')->name('cajas.estado');
+        Route::post('/depositos', [VendedorEstructura::class, 'crearDeposito'])->name('depositos.crear');
+        Route::post('/depositos/{id}/estado', [VendedorEstructura::class, 'estadoDeposito'])->whereNumber('id')->name('depositos.estado');
+        Route::post('/cotizacion', [VendedorEstructura::class, 'cotizacion'])->name('cotizacion');
+
+        Route::get('/usuarios', [VendedorEstructura::class, 'usuarios'])->name('usuarios');
+        Route::post('/usuarios/administrador', [VendedorEstructura::class, 'crearAdministrador'])->name('usuarios.administrador');
+        Route::post('/usuarios/{id}/clave', [VendedorEstructura::class, 'restablecerClave'])->whereNumber('id')->name('usuarios.clave');
+
+        Route::get('/planes', [VendedorLicencia::class, 'planes'])->name('planes');
+        Route::post('/planes', [VendedorLicencia::class, 'guardarPlan'])->name('planes.crear');
+        Route::put('/planes/{id}', [VendedorLicencia::class, 'guardarPlan'])->whereNumber('id')->name('planes.editar');
+        Route::post('/planes/{id}/estado', [VendedorLicencia::class, 'estadoPlan'])->whereNumber('id')->name('planes.estado');
+
+        Route::get('/licencia', [VendedorLicencia::class, 'licencia'])->name('licencia');
+        Route::post('/licencia/plan', [VendedorLicencia::class, 'aplicarPlan'])->name('licencia.plan');
+        Route::post('/licencia/ajustes', [VendedorLicencia::class, 'ajustes'])->name('licencia.ajustes');
+        Route::post('/licencia/pagos', [VendedorLicencia::class, 'registrarPago'])->name('licencia.pagos');
+        Route::post('/licencia/pagos/{id}/anular', [VendedorLicencia::class, 'anularPago'])->whereNumber('id')->name('licencia.pagos.anular');
     });
 });
 
