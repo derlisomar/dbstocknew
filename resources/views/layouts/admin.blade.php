@@ -49,18 +49,27 @@
     </a>
 
     <!-- 2. Punto de Venta (PDV) -->
+    @can('PDV_USAR')
     <a href="{{ route('pdv.index') }}" class="flex items-center gap-4 rounded-lg py-3 px-3 text-sm font-medium duration-300 hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('pdv*') ? 'bg-gray-100 dark:bg-gray-800 text-blue-600 dark:text-white border-l-4 border-blue-600' : 'text-gray-600 dark:text-gray-400' }}">
         <span class="text-lg">🛒</span>
         <span x-show="sidebarExpanded" class="whitespace-nowrap">Punto de Venta (PDV)</span>
     </a>
+    @endcan
 
+    @can('COBRANZAS_REGISTRAR')
     <a href="{{ route('cobranzas.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('cobranzas*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
          <span class="text-lg">💵</span>
         <span x-show="sidebarExpanded" class="whitespace-nowrap">Cobranzas y Créditos</span>
     </a>
+    <a href="{{ route('cobranzas.historial') }}" class="flex items-center gap-4 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('cobranzas.historial') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
+        <span class="text-lg">🧾</span>
+        <span x-show="sidebarExpanded" class="whitespace-nowrap">Historial de Cobros</span>
+    </a>
+    @endcan
 
     <!-- 3. Operaciones (Desplegable) -->
-    <div x-data="{ openOperaciones: {{ request()->is('operaciones*') ? 'true' : 'false' }} }">
+    @canany(['VENTAS_HISTORIAL','CLIENTES_CREDITO','REPORTES_VER','CATALOGO_GESTIONAR','STOCK_AJUSTAR'])
+    <div x-data="{ openOperaciones: {{ request()->is('operaciones*', 'inventario*') ? 'true' : 'false' }} }">
         <button @click="openOperaciones = !openOperaciones" class="flex items-center justify-between w-full rounded-lg py-3 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
             <div class="flex items-center gap-4">
                 <span class="text-lg">📈</span>
@@ -70,22 +79,40 @@
         </button>
         
         <div x-show="openOperaciones && sidebarExpanded" class="pl-8 mt-1 space-y-1" style="display: none;">
+            @can('VENTAS_HISTORIAL')
             <a href="{{ route('operaciones.ventas') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('operaciones/ventas*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📜 Control de Ventas</a>
+            @endcan
+            @can('CLIENTES_CREDITO')
             <a href="{{ route('operaciones.clientes_control') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('operaciones.clientes_control') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 📊 Control de Clientes
             </a>
+            @endcan
+           @can('REPORTES_VER')
            <a href="{{ route('operaciones.reporte_abc') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('operaciones.reporte_abc') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 📊 Análisis ABC y Rentabilidad
             </a>
+           @endcan
+            @can('CATALOGO_GESTIONAR')
             <a href="{{ route('promociones.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('promociones.*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 🎁 Promociones y Ofertas
-          <a href="{{ route('productos.control') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('productos.control') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
+            </a>
+            @endcan
+            @canany(['CATALOGO_GESTIONAR','STOCK_AJUSTAR'])
+            <a href="{{ route('inventario.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('inventario.*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
+                🗃️ Inventario y Stock
+            </a>
+            @endcanany
+            @can('CATALOGO_GESTIONAR')
+            <a href="{{ route('productos.control') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('productos.control') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 📦 Control de Productos
             </a>
+            @endcan
         </div>
     </div>
+    @endcanany
 
     <!-- 3. Finanzas y Cajas (Desplegable) -->
+    @canany(['FINANZAS_VER','CAJA_ABRIR_CERRAR'])
     <div x-data="{ openFinanzas: {{ request()->is('finanzas*') ? 'true' : 'false' }} }">
         <button @click="openFinanzas = !openFinanzas" class="flex items-center justify-between w-full rounded-lg py-3 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
             <div class="flex items-center gap-4">
@@ -97,16 +124,26 @@
         
         <div x-show="openFinanzas && sidebarExpanded" class="pl-8 mt-1 space-y-1" style="display: none;">
             
+            @canany(['FINANZAS_VER','CAJA_ABRIR_CERRAR'])
             <a href="{{ route('finanzas.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('finanzas') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📊 Estado de Cajas</a>
+            @endcanany
+            @can('FINANZAS_VER')
             <a href="{{ route('finanzas.movimientos') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('finanzas/movimientos*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">💸 Movimientos / Transferencias</a>
+            @endcan
+            @can('FINANZAS_VER')
             <a href="{{ route('finanzas.cierres') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('finanzas/cierres*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🔐 Historial de Cierres</a>
+            @endcan
+            @can('FINANZAS_VER')
             <a href="{{ route('finanzas.ingresos_egresos') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('finanzas.ingresos_egresos') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 ⚖️ Ingresos y Egresos
             </a>
+            @endcan
         </div>
     </div>
+    @endcanany
 
     <!-- 4. Registros y Catálogos (Desplegable) -->
+    @canany(['CLIENTES_GESTIONAR','CATALOGO_GESTIONAR','CONFIG_GESTIONAR'])
     <div x-data="{ openCatalogos: {{ request()->is('clientes*') || request()->is('productos*') || request()->is('categorias*') || request()->is('proveedores*') || request()->is('depositos*') || request()->is('sucursales*') || request()->is('cajas*') ? 'true' : 'false' }} }">
         <button @click="openCatalogos = !openCatalogos" class="flex items-center justify-between w-full rounded-lg py-3 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
             <div class="flex items-center gap-4">
@@ -117,18 +154,34 @@
         </button>
         
         <div x-show="openCatalogos && sidebarExpanded" class="pl-8 mt-1 space-y-1" style="display: none;">
+            @can('CLIENTES_GESTIONAR')
             <a href="{{ route('clientes.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('clientes*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">👥 Clientes</a>
+            @endcan
+            @can('CATALOGO_GESTIONAR')
             <a href="{{ route('productos.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('productos*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📦 Productos</a>
+            @endcan
+            @can('CATALOGO_GESTIONAR')
             <a href="{{ route('categorias.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('categorias*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🏷️ Categorías</a>
+            @endcan
+            @can('CATALOGO_GESTIONAR')
             <a href="{{ route('proveedores.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('proveedores*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🚚 Proveedores</a>
+            @endcan
+            @can('CONFIG_GESTIONAR')
             <a href="{{ route('depositos.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('depositos*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🏭 Depósitos</a>
+            @endcan
+            @can('CONFIG_GESTIONAR')
             <a href="{{ route('sucursales.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('sucursales*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🏢 Sucursales</a>
+            @endcan
+            @can('CONFIG_GESTIONAR')
             <a href="{{ route('cajas.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('cajas*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🧮 Cajas Físicas</a>
+            @endcan
         </div>
     </div>
+    @endcanany
 
     <!-- 5. Configuración y Administración (Desplegable) -->
-    <div x-data="{ openConfig: {{ request()->is('usuarios*') ? 'true' : 'false' }} }">
+    @canany(['USUARIOS_GESTIONAR','CONFIG_GESTIONAR','AUDITORIA_VER'])
+    <div x-data="{ openConfig: {{ request()->is('usuarios*', 'auditoria*') ? 'true' : 'false' }} }">
         <button @click="openConfig = !openConfig" class="flex items-center justify-between w-full rounded-lg py-3 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
             <div class="flex items-center gap-4">
                 <span class="text-lg">⚙️</span>
@@ -138,22 +191,37 @@
         </button>
         
         <div x-show="openConfig && sidebarExpanded" class="pl-8 mt-1 space-y-1" style="display: none;">
+            @can('USUARIOS_GESTIONAR')
             <a href="{{ route('usuarios.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('usuarios*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">👤 Gestión de Usuarios</a>
+            @endcan
             
+            @can('USUARIOS_GESTIONAR')
             <a href="{{ route('roles.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('roles*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 🛡️ Gestión de Roles
             </a>
+            @endcan
 
+            @can('AUDITORIA_VER')
+            <a href="{{ route('auditoria.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('auditoria*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
+                🕵️ Auditoría
+            </a>
+            @endcan
+
+            @can('CONFIG_GESTIONAR')
             <a href="{{ route('cotizaciones.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('cotizaciones*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
             💱 Cotizaciones de Moneda
             </a>
+            @endcan
+            @can('CONFIG_GESTIONAR')
             <a href="{{ route('configuracion.terminal') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('configuracion.terminal') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 🖥️ Configuracion Equipo
             </a>
+            @endcan
         
         </div>
  
     </div>
+    @endcanany
 
 </div>
 
@@ -265,6 +333,13 @@
             </header>
 
         <main class="p-3 md:p-4 w-full bg-gray-100 dark:bg-[#111827] min-h-[calc(100vh-4rem)]">
+            {{-- Avisos generales (las pantallas de ventas y sucursales ya muestran los suyos) --}}
+            @if(session('error') && !request()->routeIs('operaciones.ventas', 'sucursales.*'))
+                <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-900/30 dark:text-red-300">{{ session('error') }}</div>
+            @endif
+            @if(session('warning'))
+                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-900/30 dark:text-amber-300">{{ session('warning') }}</div>
+            @endif
             @yield('contenido')
         </main>
 

@@ -2,296 +2,377 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Producto;
+use App\Exceptions\NegocioException;
+use App\Models\CajaSesion;
 use App\Models\Cliente;
-use App\Models\Venta;
-use App\Models\DetalleVenta;
+use App\Models\Cotizacion;
 use App\Models\CuentasCobrar;
+use App\Models\DetalleVenta;
+use App\Models\Producto;
+use App\Models\Sucursal;
+use App\Models\Venta;
+use App\Services\CajaService;
+use App\Services\PrecioService;
+use App\Services\StockService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class PdvController extends Controller
 {
-
-    public function index()
+    public function index(PrecioService $precios)
     {
-        $productos = \App\Models\Producto::where('pro_activo', true)->get();
-        $clientes = \App\Models\Cliente::all();
-        
-        $activa = \App\Models\Cotizacion::where('cot_activa', true)->first();
+        // El costo de compra no se envía al navegador del cajero.
+        $productos = Producto::where('pro_activo', true)->get()->makeHidden(['pro_preciocosto']);
+        $clientes = Cliente::all();
+
+        $activa = Cotizacion::where('cot_activa', true)->first();
         $cotizaciones = [
             'USD' => $activa ? (float) $activa->cot_dolar : 7500,
-            'BRL' => $activa ? (float) $activa->cot_real : 1500
+            'BRL' => $activa ? (float) $activa->cot_real : 1500,
         ];
 
-        $hoy = now()->toDateString();
-        $promociones = \App\Models\Promocion::where('prom_activa', true)
-                        ->where('prom_fecha_fin', '>=', $hoy)
-                        ->get();
+        // Mismo cálculo que usa el servidor al cobrar (PrecioService).
+        $promociones = $precios->promocionesVigentes();
 
         foreach ($productos as $producto) {
-            $producto->en_promocion = false;
-            // Forzamos a que sean valores numéricos seguros
-            $producto->precio_promocional = (float) $producto->pro_precioventa; 
+            $precioPromo = $precios->precioPromocional($producto, $precios->promocionDe($producto, $promociones));
+
+            $producto->en_promocion = $precioPromo !== null;
+            $producto->precio_promocional = $precioPromo ?? (float) $producto->pro_precioventa;
             $producto->pro_preciomayorista = (float) $producto->pro_preciomayorista;
-
-            $promo = $promociones->where('prom_aplica_a', 'PRODUCTO')->where('pro_id', $producto->pro_id)->first() 
-                     ?? $promociones->where('prom_aplica_a', 'CATEGORIA')->where('cat_id', $producto->cat_id)->first();
-
-            if ($promo) {
-                $producto->en_promocion = true;
-                if ($promo->prom_tipo_descuento == 'PORCENTAJE') {
-                    $descuento = $producto->pro_precioventa * ($promo->prom_valor / 100);
-                    $producto->precio_promocional = (float) ($producto->pro_precioventa - $descuento);
-                } else {
-                    // Si es MONTO, se descuenta ese valor
-                    $producto->precio_promocional = (float) ($producto->pro_precioventa - $promo->prom_valor); 
-                }
-            }
         }
 
         return view('pdv.index', compact('productos', 'clientes', 'cotizaciones'));
     }
 
-   public function store(Request $request)
+    public function store(Request $request, PrecioService $precios, CajaService $cajas, StockService $stock)
     {
-        // 1. VALIDACIONES DE REQUEST
-        $request->validate([
-            'cli_id' => 'required|exists:clientes,cli_id',
-            'vta_tipo' => 'required|in:CONTADO,CREDITO',
-            'forma_pago' => 'required|in:EFECTIVO,TRANSFERENCIA,TARJETA_CREDITO,TARJETA_DEBITO,QR',
-            'nro_transferencia' => 'nullable|required_unless:forma_pago,EFECTIVO|string',
-            'moneda' => 'required|in:GS,USD,BRL',
-            'carrito' => 'required|array|min:1',
-            'caj_id' => 'nullable' // Recibe la caja física de la terminal local
+        // 1. VALIDACIÓN. El navegador solo envía QUÉ se vende y CUÁNTO.
+        //    Precios, subtotales y total los calcula este servidor.
+        $validador = Validator::make($request->all(), [
+            'cli_id' => ['required', 'exists:clientes,cli_id'],
+            'vta_tipo' => ['required', 'in:CONTADO,CREDITO'],
+            'forma_pago' => ['required', 'in:EFECTIVO,TRANSFERENCIA,TARJETA_CREDITO,TARJETA_DEBITO,QR'],
+            'nro_transferencia' => ['nullable', 'required_unless:forma_pago,EFECTIVO', 'string', 'max:100'],
+            'moneda' => ['required', 'in:GS,USD,BRL'],
+            'caj_id' => ['nullable', 'integer'],
+            'carrito' => ['required', 'array', 'min:1', 'max:200'],
+            'carrito.*.pro_id' => ['required', 'integer', 'exists:productos,pro_id'],
+            'carrito.*.cantidad' => ['required', 'numeric', 'gt:0', 'max:100000'],
+        ], [
+            'cli_id.required' => 'Debe seleccionar un cliente.',
+            'cli_id.exists' => 'El cliente seleccionado no existe.',
+            'forma_pago.in' => 'La forma de pago no es válida.',
+            'nro_transferencia.required_unless' => 'Debe ingresar el código o comprobante del pago.',
+            'carrito.required' => 'El carrito está vacío.',
+            'carrito.min' => 'El carrito está vacío.',
+            'carrito.*.pro_id.exists' => 'Un producto del carrito ya no existe.',
+            'carrito.*.cantidad.gt' => 'La cantidad de cada producto debe ser mayor a cero.',
+            'carrito.*.cantidad.numeric' => 'La cantidad de cada producto debe ser un número.',
         ]);
 
-        $totalGs = collect($request->carrito)->sum(fn($item) => $item['subtotal']);
-
-        // =========================================================
-        // 2. VALIDACIONES ESTRICTAS DE CLIENTE Y LÍNEA DE CRÉDITO 
-        // =========================================================
-        $cliente = \App\Models\Cliente::withSum('cuentasCobrar as total_deuda', 'cred_saldo_pendiente')->find($request->cli_id);
-
-        if ($cliente && $cliente->cli_bloqueado) {
-            return response()->json(['success' => false, 'message' => 'OPERACIÓN DENEGADA: El cliente se encuentra bloqueado por la administración.'], 422);
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'message' => $validador->errors()->first()], 422);
         }
 
-        if ($request->vta_tipo === 'CREDITO') {
-            if ($cliente && !$cliente->cli_permitir_credito) {
-                return response()->json(['success' => false, 'message' => 'OPERACIÓN DENEGADA: Este cliente no está habilitado para realizar compras a crédito.'], 422);
-            }
-
-            $deudaActual = $cliente->total_deuda ?? 0;
-            $limite = $cliente->cli_limite_credito ?? 0;
-
-            if ($limite > 0 && ($deudaActual + $totalGs) > $limite) {
-                $disponible = $limite - $deudaActual;
-                return response()->json([
-                    'success' => false, 
-                    'message' => 'LÍMITE EXCEDIDO: El cliente superó su línea de crédito autorizada.' . "\n\n" .
-                                 'Límite: Gs. ' . number_format($limite, 0, ',', '.') . "\n" .
-                                 'Crédito Disponible: Gs. ' . number_format($disponible > 0 ? $disponible : 0, 0, ',', '.') . "\n" .
-                                 'Esta Venta: Gs. ' . number_format($totalGs, 0, ',', '.')
-                ], 422);
-            }
-        }
-        // =========================================================
+        $datos = $validador->validated();
+        $usuario = $request->user();
 
         try {
-            // 3. INICIO DE LA TRANSACCIÓN AUTOMÁTICA SEGURA
-            // DB::transaction ejecuta el Commit automático al terminar, o Rollback si se lanza una Excepción.
-            $resultadoVenta = DB::transaction(function () use ($request, $totalGs) {
-                $usuario = Auth::user();
-                $cajIdEquipo = $request->input('caj_id'); 
-                $monedaVenta = $request->moneda ?? 'GS';
+            // 2. TODO ADENTRO DE UNA TRANSACCIÓN: si algo falla, no queda nada a medias.
+            $resultado = DB::transaction(function () use ($datos, $usuario, $precios, $cajas, $stock) {
+                $monedaVenta = $datos['moneda'];
 
-                // A. OBTENER SESIÓN FILTRADA ESTRICTAMENTE POR LA CAJA (CON BLOQUEO)
-                $query = \App\Models\CajaSesion::with(['caja.sucursal'])
-                                         ->where('usu_id', $usuario->usu_id ?? 1)
-                                         ->where('ses_estado', 'ABIERTA');
+                // A. Sesión de caja abierta del usuario, en la caja de esta terminal
+                $consultaSesion = CajaSesion::with(['caja'])
+                    ->where('usu_id', $usuario->usu_id)
+                    ->where('ses_estado', 'ABIERTA');
 
-                if (!empty($cajIdEquipo)) {
-                    $query->where('caj_id', $cajIdEquipo);
+                if (! empty($datos['caj_id'])) {
+                    $consultaSesion->where('caj_id', $datos['caj_id']);
                 }
 
-                $sesionActiva = $query->lockForUpdate()->first();
+                $sesionActiva = $consultaSesion->lockForUpdate()->first();
 
-                // Si no hay sesión, lanzamos una excepción para abortar la transacción
-                if (!$sesionActiva) {
-                    throw new \Exception('El equipo está configurado para una caja específica, pero no tiene una sesión ABIERTA en este momento.');
+                if (! $sesionActiva) {
+                    throw new NegocioException('El equipo está configurado para una caja específica, pero no tiene una sesión ABIERTA en este momento.');
                 }
 
                 $cajaFisica = $sesionActiva->caja;
                 $sucursalId = $cajaFisica->suc_id ?? 1;
 
-                // B. BLOQUEO DE CONCURRENCIA PARA LA SECUENCIA DE FACTURACIÓN
-                $sucursal = \App\Models\Sucursal::where('suc_id', $sucursalId)->lockForUpdate()->first();
+                // B. Cliente (bloqueado para que dos cobros a la vez no superen su límite de crédito)
+                $cliente = Cliente::whereKey($datos['cli_id'])->lockForUpdate()->first();
 
-                $nro_factura = null;
+                if ($cliente->cli_bloqueado) {
+                    throw new NegocioException('OPERACIÓN DENEGADA: El cliente se encuentra bloqueado por la administración.');
+                }
+
+                if ($datos['vta_tipo'] === 'CREDITO' && ! $cliente->cli_permitir_credito) {
+                    throw new NegocioException('OPERACIÓN DENEGADA: Este cliente no está habilitado para realizar compras a crédito.');
+                }
+
+                // C. Productos: bloqueados, activos y con stock. Si el mismo producto viene en
+                //    dos renglones, se suman las cantidades (así no se esquiva el control de stock).
+                $cantidades = collect($datos['carrito'])
+                    ->groupBy('pro_id')
+                    ->map(fn ($renglones) => (float) $renglones->sum('cantidad'));
+
+                $productos = Producto::whereIn('pro_id', $cantidades->keys())
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('pro_id');
+
+                $promociones = $precios->promocionesVigentes();
+                $esMayorista = (bool) $cliente->cli_es_mayorista;
+
+                $totalGs = 0;
+                $lineas = [];
+
+                foreach ($cantidades as $proId => $cantidad) {
+                    $producto = $productos->get($proId);
+
+                    if (! $producto || ! $producto->pro_activo) {
+                        throw new NegocioException('Uno de los productos del carrito ya no está disponible. Actualizá la pantalla e intentá de nuevo.');
+                    }
+
+                    if ($producto->pro_stockactual < $cantidad) {
+                        throw new NegocioException("Stock insuficiente de «{$producto->pro_nombre}»: disponible {$producto->pro_stockactual}, pedido {$cantidad}.");
+                    }
+
+                    $precio = $precios->precioFinal($producto, $esMayorista, $promociones);
+                    $subtotal = round($precio * $cantidad, 2);
+                    $totalGs += $subtotal;
+
+                    $lineas[] = [
+                        'producto' => $producto,
+                        'cantidad' => floor($cantidad) == $cantidad ? (int) $cantidad : $cantidad,
+                        'precio' => $precio,
+                        'subtotal' => $subtotal,
+                    ];
+                }
+
+                $totalGs = round($totalGs, 2);
+
+                // D. Límite de crédito (con el total calculado aquí, no el que diga el navegador)
+                if ($datos['vta_tipo'] === 'CREDITO') {
+                    $deudaActual = (float) CuentasCobrar::where('cli_id', $cliente->cli_id)
+                        ->where('cred_estado', 'PENDIENTE')
+                        ->sum('cred_saldo_pendiente');
+                    $limite = (float) ($cliente->cli_limite_credito ?? 0);
+
+                    // Límite 0 = sin tope (decisión de negocio a confirmar, ver guía)
+                    if ($limite > 0 && ($deudaActual + $totalGs) > $limite) {
+                        $disponible = max($limite - $deudaActual, 0);
+
+                        throw new NegocioException(
+                            "LÍMITE EXCEDIDO: El cliente superó su línea de crédito autorizada.\n\n".
+                            'Límite: Gs. '.number_format($limite, 0, ',', '.')."\n".
+                            'Crédito Disponible: Gs. '.number_format($disponible, 0, ',', '.')."\n".
+                            'Esta Venta: Gs. '.number_format($totalGs, 0, ',', '.')
+                        );
+                    }
+                }
+
+                // E. Numeración fiscal (solo si la caja emite factura), con la sucursal bloqueada
+                $sucursal = Sucursal::where('suc_id', $sucursalId)->lockForUpdate()->first();
+                $nroFactura = null;
                 $timbrado = null;
-                
-                if ($cajaFisica->caj_tipo_impresion === 'TICKET_FACTURA' && $sucursal) {
+
+                if ($cajaFisica->caj_tipo_impresion === 'TICKET_FACTURA') {
+                    if (! $sucursal || ! $sucursal->suc_timbrado) {
+                        throw new NegocioException('La sucursal no tiene un timbrado cargado. Avisá al administrador.');
+                    }
+
+                    // La fecha fiscal es la de Paraguay (el servidor guarda hora UTC)
+                    $hoy = now('America/Asuncion')->toDateString();
+
+                    if ($sucursal->suc_timbrado_inicio && $hoy < Carbon::parse($sucursal->suc_timbrado_inicio)->toDateString()) {
+                        throw new NegocioException('El timbrado de la sucursal todavía no está vigente.');
+                    }
+                    if ($sucursal->suc_timbrado_fin && $hoy > Carbon::parse($sucursal->suc_timbrado_fin)->toDateString()) {
+                        throw new NegocioException('El timbrado de la sucursal está VENCIDO. No se pueden emitir facturas hasta cargar el nuevo.');
+                    }
+
                     $timbrado = $sucursal->suc_timbrado;
-                    $nro_factura = str_pad($sucursal->suc_factura_secuencia, 7, '0', STR_PAD_LEFT);
+                    $nroFactura = str_pad($sucursal->suc_factura_secuencia, 7, '0', STR_PAD_LEFT);
                     $sucursal->increment('suc_factura_secuencia');
                 }
 
-                // C. CREAR LA VENTA CON TODOS SUS CAMPOS FISCALES Y DE PAGO
-                $venta = \App\Models\Venta::create([
+                // F. Venta y detalle
+                $venta = Venta::create([
                     'suc_id' => $sucursalId,
-                    'cli_id' => $request->cli_id,
-                    'usu_id' => $usuario->usu_id ?? 1,
+                    'cli_id' => $cliente->cli_id,
+                    'usu_id' => $usuario->usu_id,
                     'ses_id' => $sesionActiva->ses_id,
-                    'vta_tipo' => $request->vta_tipo,
-                    'vta_formapago' => $request->forma_pago,       
-                    'nro_transferencia' => $request->nro_transferencia, 
-                    'vta_moneda' => $monedaVenta,             
+                    'vta_tipo' => $datos['vta_tipo'],
+                    'vta_formapago' => $datos['forma_pago'],
+                    'nro_transferencia' => $datos['forma_pago'] === 'EFECTIVO' ? null : ($datos['nro_transferencia'] ?? null),
+                    'vta_moneda' => $monedaVenta,
                     'vta_total' => $totalGs,
                     'vta_timbrado' => $timbrado,
-                    'vta_nro_factura' => $nro_factura,
-                    'vta_estado' => 'CONFIRMADA'
+                    'vta_nro_factura' => $nroFactura,
+                    'vta_estado' => 'CONFIRMADA',
                 ]);
 
-                $total_exenta = 0;
-                $total_iva5 = 0;
-                $total_iva10 = 0;
+                $totalExenta = 0;
+                $totalIva5 = 0;
+                $totalIva10 = 0;
 
-                // D. REGISTRAR DETALLES, DESCONTAR STOCK E INCLUIR COSTO HISTÓRICO
-                foreach ($request->carrito as $item) {
-                    $producto = \App\Models\Producto::find($item['pro_id']);
-                    $costoUnitario = $producto ? ($producto->pro_preciocosto ?? 0) : 0;
+                foreach ($lineas as $linea) {
+                    /** @var Producto $producto */
+                    $producto = $linea['producto'];
 
-                    \App\Models\DetalleVenta::create([
+                    DetalleVenta::create([
                         'vta_id' => $venta->vta_id,
-                        'pro_id' => $item['pro_id'],
-                        'det_cantidad' => $item['cantidad'],
-                        'det_preciounitario' => $item['precio'],
-                        'det_subtotal' => $item['subtotal'],
-                        'det_preciocosto' => $costoUnitario 
+                        'pro_id' => $producto->pro_id,
+                        'det_cantidad' => $linea['cantidad'],
+                        'det_preciounitario' => $linea['precio'],
+                        'det_subtotal' => $linea['subtotal'],
+                        'det_preciocosto' => $producto->pro_preciocosto ?? 0, // costo histórico
                     ]);
 
-                    if ($producto) {
-                        $producto->decrement('pro_stockactual', $item['cantidad']);
-                        
-                        // Liquidación de impuestos
-                        if ($producto->pro_tipo_iva == 10) {
-                            $total_iva10 += $item['subtotal'] / 11;
-                        } elseif ($producto->pro_tipo_iva == 5) {
-                            $total_iva5 += $item['subtotal'] / 21;
-                        } else {
-                            $total_exenta += $item['subtotal'];
-                        }
+                    $stock->mover((int) $producto->pro_id, 'VENTA', -1 * (float) $linea['cantidad'], 'Venta en punto de venta', 'venta:'.$venta->vta_id);
+
+                    // IVA incluido en el precio
+                    if ((int) $producto->pro_tipo_iva === 10) {
+                        $totalIva10 += $linea['subtotal'] / 11;
+                    } elseif ((int) $producto->pro_tipo_iva === 5) {
+                        $totalIva5 += $linea['subtotal'] / 21;
+                    } else {
+                        $totalExenta += $linea['subtotal'];
                     }
                 }
 
-                // E. ACTUALIZAR TOTALES DE IMPUESTOS EN LA VENTA
                 $venta->update([
-                    'vta_total_exenta' => round($total_exenta, 2),
-                    'vta_total_iva5' => round($total_iva5, 2),
-                    'vta_total_iva10' => round($total_iva10, 2),
+                    'vta_total_exenta' => round($totalExenta, 2),
+                    'vta_total_iva5' => round($totalIva5, 2),
+                    'vta_total_iva10' => round($totalIva10, 2),
                 ]);
 
-                // F. INGRESO EN LA CAJA Y CONVERSIÓN DE MONEDA (Solo si es al Contado)
-                if ($request->vta_tipo === 'CONTADO') {
+                // G. Ingreso a caja (solo contado), convertido a la moneda en que se cobró.
+                //    Queda en el libro con su forma de pago, pero SOLO el efectivo suma al saldo físico.
+                if ($datos['vta_tipo'] === 'CONTADO') {
                     $montoIngresoCaja = $totalGs;
-                    
-                    // Convertir el monto físico si la venta fue en USD o BRL
+
                     if ($monedaVenta !== 'GS') {
-                        $cotizacion = \App\Models\Cotizacion::where('cot_activa', true)->first();
-                        if ($monedaVenta === 'USD') {
-                            $montoIngresoCaja = $totalGs / ($cotizacion->cot_dolar ?? 7500);
-                        } elseif ($monedaVenta === 'BRL') {
-                            $montoIngresoCaja = $totalGs / ($cotizacion->cot_real ?? 1500);
-                        }
+                        $cotizacion = Cotizacion::where('cot_activa', true)->first();
+                        $tasa = $monedaVenta === 'USD'
+                            ? ($cotizacion->cot_dolar ?? 7500)
+                            : ($cotizacion->cot_real ?? 1500);
+                        $montoIngresoCaja = round($totalGs / $tasa, 2);
                     }
 
-                    \App\Models\CajaMovimiento::create([
-                        'ses_id' => $sesionActiva->ses_id,
-                        'mov_tipo' => 'INGRESO',
-                        'mov_monto' => $montoIngresoCaja, // Guardamos el billete convertido
-                        'mov_concepto' => 'Venta Nro. ' . ($nro_factura ?? $venta->vta_id) . ' (' . $request->forma_pago . ')',
-                        'mov_moneda' => $monedaVenta
-                    ]);
-
-                    $columnaSaldo = 'caj_saldo_' . strtolower($monedaVenta);
-                    
-                    // Bloqueamos la caja para evitar fallos si dos personas cobran a la vez
-                    $cajaUpdate = \App\Models\Caja::where('caj_id', $cajaFisica->caj_id)->lockForUpdate()->first();
-                    if ($cajaUpdate && isset($cajaUpdate->$columnaSaldo)) {
-                        $cajaUpdate->increment($columnaSaldo, $montoIngresoCaja);
-                    }
+                    $cajas->registrar(
+                        $sesionActiva, 'INGRESO', $montoIngresoCaja, $monedaVenta,
+                        'Venta Nro. '.($nroFactura ?? $venta->vta_id).' ('.$datos['forma_pago'].')',
+                        $datos['forma_pago'], ['vta_id' => $venta->vta_id]
+                    );
                 }
 
-                // G. SI ES A CRÉDITO, GENERAR CUENTA POR COBRAR (Sin tocar el saldo de caja)
-                if ($request->vta_tipo === 'CREDITO') {
-                    \App\Models\CuentasCobrar::create([
+                // H. A crédito: cuenta por cobrar (la deuda es siempre en guaraníes)
+                if ($datos['vta_tipo'] === 'CREDITO') {
+                    CuentasCobrar::create([
                         'vta_id' => $venta->vta_id,
-                        'cli_id' => $request->cli_id,
-                        'cred_monto_total' => $totalGs, // La deuda es en Guaraníes siempre
+                        'cli_id' => $cliente->cli_id,
+                        'cred_monto_total' => $totalGs,
                         'cred_saldo_pendiente' => $totalGs,
                         'cred_fecha_vencimiento' => now()->addDays(30),
-                        'cred_estado' => 'PENDIENTE'
+                        'cred_estado' => 'PENDIENTE',
                     ]);
                 }
 
-                // H. RETORNO EXITOSO DE LA TRANSACCIÓN
                 return [
-                    'success' => true, 
+                    'success' => true,
                     'message' => '¡Venta registrada con éxito, stock y correlativo actualizados!',
                     'impresora' => $cajaFisica->caj_impresora ?? null,
                     'venta_id' => $venta->vta_id,
-                    'tipo_impresion' => $cajaFisica->caj_tipo_impresion
+                    'tipo_impresion' => $cajaFisica->caj_tipo_impresion,
+                    'total_gs' => $totalGs,
                 ];
-            }); // <-- FIN DE LA TRANSACCIÓN AUTOMÁTICA
+            });
 
-            // Devolvemos al navegador el resultado de todo el proceso
-            return response()->json($resultadoVenta);
+            return response()->json($resultado);
 
-        } catch (\Exception $e) {
-            // Laravel ya hizo el rollback en la base de datos automáticamente.
-            // Solo devolvemos el error al cajero.
+        } catch (NegocioException $e) {
+            // Error esperado: se le explica al cajero.
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+
+        } catch (\Throwable $e) {
+            // Error inesperado: el detalle técnico va al log, al cajero solo un código.
+            $codigo = strtoupper(Str::random(6));
+            Log::error("Error al registrar venta [{$codigo}]", [
+                'usuario' => $usuario->usu_id,
+                'exception' => $e,
+            ]);
+
             return response()->json([
-                'success' => false, 
-                'message' => $e->getMessage()
+                'success' => false,
+                'message' => "No se pudo registrar la venta. Avisá al administrador (código {$codigo}).",
             ], 500);
         }
     }
-    
 
     public function storeClienteAjax(Request $request)
     {
         $request->validate([
             'cli_ruc_ci' => 'required|string|max:30|unique:clientes,cli_ruc_ci',
             'cli_nombre' => 'required|string|max:100',
-            'cli_apellido' => 'required|string|max:100', // Ahora es obligatorio
-            'cli_telefono' => 'required|string|max:30',  // Ahora es obligatorio
-            'cli_email' => 'required|email|max:100',     // Ahora es obligatorio
-            'cli_direccion' => 'required|string',        // Ahora es obligatorio
+            'cli_apellido' => 'required|string|max:100',
+            'cli_telefono' => 'required|string|max:30',
+            'cli_email' => 'required|email|max:100',
+            'cli_direccion' => 'required|string',
             'cli_limite_credito' => 'nullable|numeric|min:0',
         ]);
-        
-        $data = $request->all();
-        $data['cli_es_mayorista'] = $request->has('cli_es_mayorista');
-        $cliente = \App\Models\Cliente::create($data);
+
+        // Solo se copian los campos de contacto. Mayorista y límite de crédito cambian
+        // el precio y la deuda permitida: solo los puede fijar quien tiene CLIENTES_CREDITO.
+        $datos = $request->only(['cli_ruc_ci', 'cli_nombre', 'cli_apellido', 'cli_telefono', 'cli_email', 'cli_direccion']);
+
+        $puedeCredito = $request->user()->tienePermiso('CLIENTES_CREDITO');
+        $datos['cli_es_mayorista'] = $puedeCredito ? $request->boolean('cli_es_mayorista') : false;
+        $datos['cli_limite_credito'] = $puedeCredito ? ($request->input('cli_limite_credito') ?: 0) : 0;
+        $datos['cli_permitir_credito'] = false;
+        $datos['cli_bloqueado'] = false;
+
+        $cliente = Cliente::create($datos);
 
         return response()->json(['success' => true, 'cliente' => $cliente]);
     }
 
-public function ticketSimple($id)
-{
-    // Cambiamos 'caja' por 'sesion.caja' porque la caja cuelga de la sesión de caja
-    $venta = Venta::with(['detalles.producto', 'cliente', 'sesion.caja', 'sucursal'])->findOrFail($id);
-    
-    return view('pdv.ticket-simple', compact('venta'));
-}
+    public function ticketSimple(Request $request, $id)
+    {
+        $venta = $this->ventaVisible($request, $id);
 
-public function ticketFactura($id)
-{
-    $venta = Venta::with(['detalles.producto', 'cliente', 'sesion.caja', 'sucursal'])->findOrFail($id);
-    
-    return view('pdv.ticket-factura', compact('venta'));
-}
+        return view('pdv.ticket-simple', compact('venta'));
+    }
 
+    public function ticketFactura(Request $request, $id)
+    {
+        $venta = $this->ventaVisible($request, $id);
+
+        return view('pdv.ticket-factura', compact('venta'));
+    }
+
+    /**
+     * Un cajero solo ve los tickets de sus propias ventas (antes cualquiera con acceso al POS
+     * podía abrir el ticket de cualquier venta cambiando el número en la dirección).
+     * Quien tiene acceso al historial de ventas (y el Administrador) los ve todos.
+     */
+    private function ventaVisible(Request $request, $id): Venta
+    {
+        $venta = Venta::with(['detalles.producto', 'cliente', 'sesion.caja', 'sucursal'])->findOrFail($id);
+
+        abort_unless(
+            (int) $venta->usu_id === (int) $request->user()->usu_id || $request->user()->can('VENTAS_HISTORIAL'),
+            403,
+            'No tenés permiso para ver este ticket.'
+        );
+
+        return $venta;
+    }
 }

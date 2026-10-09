@@ -97,6 +97,8 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Hora de Paraguay también para los valores por defecto que pone la base (CURRENT_TIMESTAMP).
+            'timezone' => env('DB_TIMEZONE', 'America/Asuncion'),
         ],
 
         'sqlsrv' => [

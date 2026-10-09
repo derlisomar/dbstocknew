@@ -8,8 +8,8 @@
             <p class="text-sm text-gray-500">Márgenes de utilidad real y clasificación de Pareto (80/20).</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('operaciones.reporte_abc.excel', request()->all()) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🟢 Excel Export</a>
-            <a href="{{ route('operaciones.reporte_abc.pdf', request()->all()) }}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">📄 PDF Export</a>
+            <a href="{{ route('operaciones.reporte_abc.excel', request()->all()) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">🟢 Descargar Excel (CSV)</a>
+            <a href="{{ route('operaciones.reporte_abc.pdf', request()->all()) }}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">📄 Imprimir / PDF</a>
         </div>
     </div>
 
@@ -74,9 +74,13 @@
                     <td class="p-4 text-right text-red-500">Gs. {{ number_format($item->costo_total, 0, ',', '.') }}</td>
                     <td class="p-4 text-right font-bold text-emerald-600">Gs. {{ number_format($item->utilidad_bruta, 0, ',', '.') }}</td>
                     <td class="p-4 text-center font-bold">
-                        <span class="{{ $item->margen_porcentual < 20 ? 'text-red-500' : 'text-emerald-500' }}">
-                            {{ number_format($item->margen_porcentual, 1) }}%
-                        </span>
+                        @if($item->sin_costo)
+                            <span class="text-amber-600 text-xs" title="Este producto no tiene costo cargado">Sin costo</span>
+                        @else
+                            <span class="{{ $item->margen_porcentual < 20 ? 'text-red-500' : 'text-emerald-500' }}">
+                                {{ number_format($item->margen_porcentual, 1) }}%
+                            </span>
+                        @endif
                     </td>
                 </tr>
                 @endforeach

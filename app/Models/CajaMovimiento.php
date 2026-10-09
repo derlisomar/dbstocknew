@@ -16,7 +16,10 @@ class CajaMovimiento extends Model
         'mov_monto',
         'mov_concepto',
         'mov_moneda',
-        'caj_id_destino'
+        'caj_id_destino',
+        'mov_forma_pago',
+        'vta_id',
+        'cob_id',
     ];
 
     public function sesion()

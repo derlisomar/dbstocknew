@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\CajaSesion;
 use App\Models\Sucursal;
 use App\Models\IngresoEgreso;
-use App\Models\CajaMovimiento;
+use App\Exceptions\NegocioException;
+use App\Services\AuditoriaService;
+use App\Services\CajaService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -62,7 +64,7 @@ class IngresoEgresoController extends Controller
         ));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, CajaService $cajas)
     {
         $request->validate([
             'tipo' => 'required|in:INGRESO,EGRESO',
@@ -71,33 +73,37 @@ class IngresoEgresoController extends Controller
             'concepto' => 'required|string|max:255',
         ]);
 
-        DB::transaction(function () use ($request) {
-            
-            // 1. Guardar en la nueva tabla (Para tu historial separado)
-            IngresoEgreso::create([
-                'ses_id' => $request->ses_id,
-                'ie_tipo' => $request->tipo,
-                'ie_monto' => $request->monto,
-                'ie_concepto' => $request->concepto,
-            ]);
+        try {
+            DB::transaction(function () use ($request, $cajas) {
+                $sesion = CajaSesion::whereKey($request->ses_id)->lockForUpdate()->first();
 
-            // 2. Registrar en el libro diario para que el arqueo de caja cuadre perfecto
-            CajaMovimiento::create([
-                'ses_id' => $request->ses_id,
-                'mov_tipo' => $request->tipo,
-                'mov_monto' => $request->monto,
-                'mov_concepto' => 'MOV. EXTRA: ' . $request->concepto,
-                'mov_moneda' => 'GS'
-            ]);
+                // Solo en una caja ABIERTA, y solo la propia (o con permiso de responsable).
+                if ($sesion->ses_estado !== 'ABIERTA') {
+                    throw new NegocioException('Esa caja ya está cerrada: no se pueden registrar movimientos.');
+                }
+                if ((int) $sesion->usu_id !== (int) $request->user()->usu_id && ! $request->user()->tienePermiso('CAJA_OPERAR_AJENA')) {
+                    throw new NegocioException('Solo podés registrar movimientos en tu propia caja abierta.');
+                }
 
-            // 3. Afectar el saldo consolidado de la caja
-            $caja = CajaSesion::find($request->ses_id)->caja;
-            if ($request->tipo === 'INGRESO') {
-                $caja->increment('caj_saldo_gs', $request->monto);
-            } else {
-                $caja->decrement('caj_saldo_gs', $request->monto);
-            }
-        });
+                // 1. Historial separado de ingresos y egresos
+                IngresoEgreso::create([
+                    'ses_id' => $sesion->ses_id,
+                    'ie_tipo' => $request->tipo,
+                    'ie_monto' => $request->monto,
+                    'ie_concepto' => $request->concepto,
+                ]);
+
+                // 2. Libro de caja + saldo físico (un egreso no puede dejar la caja en negativo)
+                $cajas->registrar($sesion, $request->tipo, (float) $request->monto, 'GS', 'MOV. EXTRA: '.$request->concepto, 'EFECTIVO');
+
+                AuditoriaService::registrar('CAJA_'.$request->tipo.'_EXTRA', 'caja_sesiones', $sesion->ses_id, [
+                    'monto' => (float) $request->monto,
+                    'concepto' => $request->concepto,
+                ]);
+            });
+        } catch (NegocioException $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
 
         return back()->with('success', 'Operación registrada correctamente.');
     }

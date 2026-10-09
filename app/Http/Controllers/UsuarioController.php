@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Rol;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -28,6 +29,8 @@ class UsuarioController extends Controller
             'rol_id' => 'required|exists:roles,rol_id',
         ]);
 
+        $this->protegerAdministradores(null, (int) $request->rol_id);
+
         User::create([
             'usu_nombre' => $request->usu_nombre,
             'usu_apellido' => $request->usu_apellido,
@@ -45,6 +48,7 @@ class UsuarioController extends Controller
     public function update(Request $request, $id)
     {
         $usuario = User::findOrFail($id);
+        $this->protegerAdministradores($usuario, (int) $request->rol_id);
 
         $request->validate([
             'usu_nombre' => 'required|string|max:100',
@@ -89,12 +93,57 @@ class UsuarioController extends Controller
     }
 
 
-    // 6. Borrar el usuario totalmente de la base de datos
+    // 6. Desactivar al usuario (no se borra: se conserva su historial de ventas y cajas)
     public function destroy($id)
     {
         $usuario = User::findOrFail($id);
-        $usuario->delete();
 
-        return redirect()->route('usuarios.index')->with('success', 'Usuario eliminado correctamente.');
+        if ((int) $usuario->usu_id === (int) auth()->id()) {
+            return redirect()->route('usuarios.index')->with('error', 'No podés desactivar tu propio usuario.');
+        }
+
+        $this->protegerAdministradores($usuario);
+
+        $usuario->update(['usu_activo' => false]);
+        AuditoriaService::registrar('USUARIO_DESACTIVADO', 'usuarios', $usuario->usu_id, ['usuario' => $usuario->usu_usuario]);
+
+        return redirect()->route('usuarios.index')->with('success', 'Usuario desactivado: ya no puede iniciar sesión y su historial se conserva.');
+    }
+
+    // Volver a habilitar a un usuario desactivado
+    public function reactivar($id)
+    {
+        $usuario = User::findOrFail($id);
+
+        $this->protegerAdministradores($usuario);
+
+        $usuario->update(['usu_activo' => true]);
+        AuditoriaService::registrar('USUARIO_REACTIVADO', 'usuarios', $usuario->usu_id, ['usuario' => $usuario->usu_usuario]);
+
+        return redirect()->route('usuarios.index')->with('success', 'Usuario reactivado: ya puede iniciar sesión.');
+    }
+
+    /**
+     * Solo un administrador puede modificar a otro administrador o asignar el rol de administrador.
+     * Evita que alguien con permiso de "gestionar usuarios" se otorgue acceso total.
+     */
+    private function protegerAdministradores(?User $objetivo, ?int $rolIdNuevo = null): void
+    {
+        if (auth()->user()->esAdministrador()) {
+            return;
+        }
+
+        if ($objetivo && $objetivo->esAdministrador()) {
+            abort(403, 'Solo un administrador puede modificar a otro administrador.');
+        }
+
+        if ($rolIdNuevo) {
+            $rol = Rol::find($rolIdNuevo);
+            $admins = array_map('mb_strtolower', config('permisos.roles_admin', []));
+
+            if ($rol && in_array(mb_strtolower($rol->rol_nombre), $admins, true)) {
+                abort(403, 'Solo un administrador puede asignar el rol de administrador.');
+            }
+        }
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -28,26 +29,43 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Cambiamos 'usu_usuario' por 'login_input'
-            'login_input' => ['required', 'string'],
+            'login_input' => ['required', 'string', 'max:150'],
             'password' => ['required', 'string'],
         ];
     }
 
+    /**
+     * Attempt to authenticate the request's credentials.
+     *
+     * @throws ValidationException
+     */
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 
-        // Capturamos lo que el usuario escribió en el formulario
-        $loginInput = $this->input('login_input');
-        
-        // Detectar automáticamente: si tiene un "@" y formato de email, buscamos en 'usu_email', sino en 'usu_usuario'
-        $fieldType = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'usu_email' : 'usu_usuario';
+        $loginInput = trim((string) $this->input('login_input'));
 
-        // Intentar iniciar sesión usando la columna correcta
-        if (! Auth::attempt([$fieldType => $loginInput, 'password' => $this->input('password')], $this->boolean('remember'))) {
+        // Si parece un correo se busca en usu_email; si no, en usu_usuario.
+        $campo = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'usu_email' : 'usu_usuario';
+
+        // 'usu_activo' => true: un usuario desactivado no puede entrar aunque la clave sea correcta.
+        $credenciales = [
+            $campo => $loginInput,
+            'password' => $this->input('password'),
+            'usu_activo' => true,
+        ];
+
+        if (! Auth::attempt($credenciales, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
+            // Queda registrado en storage/logs/laravel.log (sin guardar la contraseña).
+            Log::warning('Intento de login fallido', [
+                'login' => $loginInput,
+                'ip' => $this->ip(),
+            ]);
+
+            // El mismo mensaje para clave incorrecta y usuario desactivado:
+            // no se revela cuál de los dos casos es.
             throw ValidationException::withMessages([
                 'login_input' => 'Estas credenciales no coinciden con nuestros registros.',
             ]);
@@ -55,6 +73,7 @@ class LoginRequest extends FormRequest
 
         RateLimiter::clear($this->throttleKey());
     }
+
     /**
      * Ensure the login request is not rate limited.
      *
@@ -68,21 +87,19 @@ class LoginRequest extends FormRequest
 
         event(new Lockout($this));
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        $segundos = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'login_input' => 'Demasiados intentos. Probá de nuevo en '.ceil($segundos / 60).' minuto(s).',
         ]);
     }
 
     /**
-     * Get the rate limiting throttle key for the request.
+     * Límite de 5 intentos por combinación usuario + IP.
+     * (Antes usaba el campo "email", que este formulario no envía.)
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower((string) $this->input('login_input')).'|'.$this->ip());
     }
 }

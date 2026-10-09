@@ -2,7 +2,9 @@
 
 @section('contenido')
 <!-- Incluir ApexCharts -->
+@if($verTodo)
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+@endif
 
 <div class="space-y-6" x-data="{ darkMode: document.documentElement.classList.contains('dark') }">
     
@@ -10,98 +12,90 @@
     <div class="flex justify-between items-end">
         <div>
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Panel de Rendimiento</h2>
-            <p class="text-sm text-gray-500 mt-1">Resumen estadístico correspondiente al mes de <span class="font-bold text-blue-600 uppercase">{{ $mesNombre }}</span>.</p>
+            <p class="text-sm text-gray-500 mt-1">Resumen correspondiente al mes de <span class="font-bold text-blue-600 uppercase">{{ $mesNombre }}</span>.</p>
         </div>
+        @can('VENTAS_HISTORIAL')
         <div class="hidden md:flex gap-2">
             <a href="{{ route('operaciones.ventas.pdf') }}?fecha_inicio={{ \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d') }}&fecha_fin={{ \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d') }}" target="_blank" class="bg-white dark:bg-[#1c2434] border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:text-blue-600 transition flex items-center gap-2">
                 📄 Descargar Reporte
             </a>
         </div>
+        @endcan
     </div>
 
-    <!-- 1. Tarjetas de KPIs Estéticas -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <!-- Ingresos -->
-        <div class="bg-white dark:bg-[#1c2434] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative overflow-hidden group">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-[11px] font-black uppercase tracking-wider text-gray-400 mb-1">Ingresos del Mes</p>
-                    <h3 class="text-2xl font-black text-gray-800 dark:text-white">Gs. {{ number_format($totalIngresos, 0, ',', '.') }}</h3>
-                </div>
-                <div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-xl text-xl">💰</div>
-            </div>
-            <div class="mt-4 flex items-center gap-2 text-xs font-medium text-emerald-500">
-                <span>↑ 12.5%</span> <span class="text-gray-400">vs mes anterior</span>
+<style>
+.dk-sec{--c:#3b82f6;--bg:rgba(59,130,246,.14);background:#fff;border:1px solid #e5e7eb;border-left:4px solid var(--c);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.dk-sec.amb{--c:#f59e0b;--bg:rgba(245,158,11,.16)}
+.dk-sec.vio{--c:#8b5cf6;--bg:rgba(139,92,246,.16)}
+html.dark .dk-sec{background:#1c2434;border-color:#2e3a47;border-left-color:var(--c)}
+.dk-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.dk-badge{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:var(--bg);color:var(--c)}
+.dk-sub{font-size:12px;color:#9ca3af}
+.dk-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.dk-tile{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f9fafb;border:1px solid #eef0f3;min-width:0}
+html.dark .dk-tile{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.07)}
+.dk-ico{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--bg)}
+.dk-txt{min-width:0}
+.dk-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.dark .dk-lbl{color:#9ca3af}
+.dk-val{font-size:17px;font-weight:800;line-height:1.25;color:#111827;white-space:nowrap}
+html.dark .dk-val{color:#fff}
+.dk-note{font-size:11px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dk-red{color:#ef4444}.dk-up{color:#10b981}
+.dk-charts{display:grid;gap:12px;margin-top:14px}
+.dk-two{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.dk-chart{border:1px solid #e5e7eb;border-radius:10px;padding:12px}
+html.dark .dk-chart{border-color:#2e3a47}
+.dk-chart h4{font-size:13px;font-weight:700;margin:0 0 6px;color:#1f2937}
+html.dark .dk-chart h4{color:#fff}
+</style>
+    @if(! $verTodo)
+    <section class="dk-sec ">
+        <div class="dk-head"><span class="dk-badge">Mi día</span><span class="dk-sub">{{ \Carbon\Carbon::now()->locale('es')->translatedFormat('l d \\d\\e F') }}</span></div>
+        <div class="dk-grid">
+            <div class="dk-tile"><div class="dk-ico">🧾</div><div class="dk-txt"><div class="dk-lbl">Mis ventas</div><div class="dk-val">{{ $miDia['cantidad'] }}</div><div class="dk-note ">Hechas hoy</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">💵</div><div class="dk-txt"><div class="dk-lbl">Mi total</div><div class="dk-val">Gs. {{ number_format($miDia['total'], 0, ',', '.') }}</div><div class="dk-note ">Sin anuladas</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">⚠️</div><div class="dk-txt"><div class="dk-lbl">Stock bajo mínimo</div><div class="dk-val">{{ $stockBajo }}</div><div class="dk-note ">Productos por reponer</div></div></div>
+        </div>
+    </section>
+    @else
+    <section class="dk-sec ">
+        <div class="dk-head"><span class="dk-badge">Hoy</span><span class="dk-sub">{{ \Carbon\Carbon::now()->locale('es')->translatedFormat('l d \\d\\e F') }}</span></div>
+        <div class="dk-grid">
+            <div class="dk-tile"><div class="dk-ico">📆</div><div class="dk-txt"><div class="dk-lbl">Ventas</div><div class="dk-val">Gs. {{ number_format($hoy['ventas_total'], 0, ',', '.') }}</div><div class="dk-note ">{{ $hoy['ventas_cant'] }} venta(s)</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">🤝</div><div class="dk-txt"><div class="dk-lbl">Cobros</div><div class="dk-val">Gs. {{ number_format($hoy['cobros_total'], 0, ',', '.') }}</div><div class="dk-note ">Créditos cobrados</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">🏧</div><div class="dk-txt"><div class="dk-lbl">Cajas abiertas</div><div class="dk-val">{{ $hoy['cajas_abiertas'] }}</div><div class="dk-note ">Sin cerrar</div></div></div>
+        </div>
+    </section>
+    <section class="dk-sec amb">
+        <div class="dk-head"><span class="dk-badge">Situación actual</span><span class="dk-sub">Al día de hoy, no depende del mes</span></div>
+        <div class="dk-grid">
+            <div class="dk-tile"><div class="dk-ico">📒</div><div class="dk-txt"><div class="dk-lbl">Deuda de clientes</div><div class="dk-val">Gs. {{ number_format($hoy['deuda_total'], 0, ',', '.') }}</div><div class="dk-note ">Saldo pendiente</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">⏰</div><div class="dk-txt"><div class="dk-lbl">Deuda vencida</div><div class="dk-val">Gs. {{ number_format($hoy['deuda_vencida'], 0, ',', '.') }}</div><div class="dk-note dk-red">Pasó el vencimiento</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">⚠️</div><div class="dk-txt"><div class="dk-lbl">Stock bajo mínimo</div><div class="dk-val">{{ $stockBajo }}</div><div class="dk-note ">Productos por reponer</div></div></div>
+        </div>
+    </section>
+    <section class="dk-sec vio">
+        <div class="dk-head"><span class="dk-badge">Este mes</span><span class="dk-sub">{{ \Carbon\Carbon::now()->locale('es')->translatedFormat('F Y') }} · acumulado</span></div>
+        <div class="dk-grid">
+            <div class="dk-tile"><div class="dk-ico">💰</div><div class="dk-txt"><div class="dk-lbl">Ingresos</div><div class="dk-val">Gs. {{ number_format($totalIngresos, 0, ',', '.') }}</div>
+                <div class="dk-note">@if($variacionMes === null)Sin mes anterior para comparar @else<span class="{{ $variacionMes >= 0 ? 'dk-up' : 'dk-red' }}">{{ $variacionMes >= 0 ? '↑' : '↓' }} {{ abs($variacionMes) }}%</span> vs mes anterior @endif</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">📈</div><div class="dk-txt"><div class="dk-lbl">Ventas</div><div class="dk-val">{{ $totalOperaciones }}</div><div class="dk-note ">Operaciones del mes</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">👥</div><div class="dk-txt"><div class="dk-lbl">Clientes</div><div class="dk-val">{{ $clientesRegistrados }}</div><div class="dk-note ">Registrados en total</div></div></div>
+            <div class="dk-tile"><div class="dk-ico">📦</div><div class="dk-txt"><div class="dk-lbl">Productos activos</div><div class="dk-val">{{ $productosActivos }}</div><div class="dk-note ">En el catálogo</div></div></div>
+        </div>
+        <div class="dk-charts">
+            <div class="dk-chart"><h4>Evolución de ingresos diarios</h4><div id="chartLine" style="width:100%;height:256px"></div></div>
+            <div class="dk-two">
+                <div class="dk-chart"><h4>Ventas por modalidad</h4><div id="chartBar" style="width:100%;height:240px"></div></div>
+                <div class="dk-chart"><h4>Distribución por método de pago</h4><div id="chartPie" style="width:100%;height:240px;display:flex;justify-content:center"></div></div>
             </div>
         </div>
-
-        <!-- Operaciones -->
-        <div class="bg-white dark:bg-[#1c2434] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative overflow-hidden group">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-[11px] font-black uppercase tracking-wider text-gray-400 mb-1">Ventas Exitosas</p>
-                    <h3 class="text-2xl font-black text-gray-800 dark:text-white">{{ $totalOperaciones }}</h3>
-                </div>
-                <div class="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl text-xl">📈</div>
-            </div>
-            <div class="mt-4 flex items-center gap-2 text-xs font-medium text-blue-500">
-                <span>Operaciones cerradas</span>
-            </div>
-        </div>
-
-        <!-- Nuevos Clientes -->
-        <div class="bg-white dark:bg-[#1c2434] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative overflow-hidden group">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-[11px] font-black uppercase tracking-wider text-gray-400 mb-1">Nuevos Clientes</p>
-                    <h3 class="text-2xl font-black text-gray-800 dark:text-white">{{ $nuevosClientes }}</h3>
-                </div>
-                <div class="p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-xl text-xl">👥</div>
-            </div>
-            <div class="mt-4 flex items-center gap-2 text-xs font-medium text-purple-500">
-                <span>Registrados este mes</span>
-            </div>
-        </div>
-
-        <!-- Catálogo -->
-        <div class="bg-white dark:bg-[#1c2434] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative overflow-hidden group">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-[11px] font-black uppercase tracking-wider text-gray-400 mb-1">Productos Activos</p>
-                    <h3 class="text-2xl font-black text-gray-800 dark:text-white">{{ $productosActivos }}</h3>
-                </div>
-                <div class="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-600 rounded-xl text-xl">📦</div>
-            </div>
-            <div class="mt-4 flex items-center gap-2 text-xs font-medium text-gray-500">
-                <span>Disponibles en inventario</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. Gráfico Principal: Líneas (Evolución de Ingresos) -->
-    <div class="bg-white dark:bg-[#1c2434] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-        <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Evolución de Ingresos Diarios</h4>
-        <div id="chartLine" class="w-full h-80"></div>
-    </div>
-
-    <!-- 3. Gráficos Secundarios: Circular y Barras -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <!-- Gráfico de Barras -->
-        <div class="bg-white dark:bg-[#1c2434] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Ventas por Modalidad</h4>
-            <div id="chartBar" class="w-full h-72"></div>
-        </div>
-
-        <!-- Gráfico Circular -->
-        <div class="bg-white dark:bg-[#1c2434] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Distribución por Método de Pago</h4>
-            <div id="chartPie" class="w-full h-72 flex justify-center"></div>
-        </div>
-
-    </div>
+    </section>
+    @endif
 </div>
 
+@if($verTodo)
 <!-- ================= SCRIPTS DE APEXCHARTS ================= -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -177,4 +171,5 @@ document.addEventListener("DOMContentLoaded", function() {
     new ApexCharts(document.querySelector("#chartPie"), optionsPie).render();
 });
 </script>
+@endif
 @endsection

@@ -2,63 +2,99 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Venta;
 use App\Models\Cliente;
 use App\Models\Producto;
+use App\Models\Venta;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Definir rango: EL MES ACTUAL
-        $inicioMes = Carbon::now()->startOfMonth();
-        $finMes = Carbon::now()->endOfMonth();
+        $usuario = $request->user();
+
+        // Quien puede ver reportes o el historial de ventas ve toda la empresa.
+        // El resto (cajeros) ve solo su propio día: antes cualquiera veía la facturación del mes.
+        $verTodo = $usuario->can('REPORTES_VER') || $usuario->can('VENTAS_HISTORIAL');
+
+        $ahora = Carbon::now();
+        $inicioMes = $ahora->copy()->startOfMonth();
+        $finMes = $ahora->copy()->endOfMonth();
         $mesNombre = $inicioMes->translatedFormat('F Y');
+        $hoyInicio = $ahora->copy()->startOfDay();
+        $hoyFin = $ahora->copy()->endOfDay();
 
-        // 2. KPIs del Mes Actual
+        // ---- Mi día (todos)
+        $misVentasHoy = Venta::where('usu_id', $usuario->usu_id)
+            ->whereBetween('vta_fecha', [$hoyInicio, $hoyFin])->where('vta_estado', '!=', 'ANULADA');
+        $miDia = [
+            'cantidad' => (clone $misVentasHoy)->count(),
+            'total' => (float) (clone $misVentasHoy)->sum('vta_total'),
+        ];
+
+        $datos = [
+            'verTodo' => $verTodo,
+            'mesNombre' => $mesNombre,
+            'miDia' => $miDia,
+            'productosActivos' => Producto::where('pro_activo', true)->count(),
+            'stockBajo' => Producto::where('pro_activo', true)->whereColumn('pro_stockactual', '<=', 'pro_stockminimo')->count(),
+            'totalIngresos' => 0, 'totalOperaciones' => 0, 'clientesRegistrados' => 0, 'variacionMes' => null,
+            'hoy' => null,
+            'fechasLine' => collect(), 'totalesLine' => collect(),
+            'labelsPie' => collect(), 'datosPie' => collect(), 'labelsBar' => collect(), 'datosBar' => collect(),
+        ];
+
+        if (! $verTodo) {
+            return view('dashboard', $datos);
+        }
+
+        // ---- Mes actual
         $ventasMes = Venta::whereBetween('vta_fecha', [$inicioMes, $finMes])->where('vta_estado', '!=', 'ANULADA');
-        $totalIngresos = $ventasMes->sum('vta_total');
-        $totalOperaciones = $ventasMes->count();
-        $nuevosClientes = Cliente::count(); // Corregido el problema anterior
-        $productosActivos = Producto::where('pro_activo', true)->count();
+        $totalIngresos = (float) (clone $ventasMes)->sum('vta_total');
+        $datos['totalIngresos'] = $totalIngresos;
+        $datos['totalOperaciones'] = (clone $ventasMes)->count();
+        $datos['clientesRegistrados'] = Cliente::count();
 
-        // 3. Gráfico de Líneas (Ventas por día del mes ACTUAL)
+        // ---- Comparación real contra el mes anterior (mismo tramo de días no, mes completo)
+        $inicioPrev = $inicioMes->copy()->subMonthNoOverflow()->startOfMonth();
+        $finPrev = $inicioPrev->copy()->endOfMonth();
+        $totalPrev = (float) Venta::whereBetween('vta_fecha', [$inicioPrev, $finPrev])->where('vta_estado', '!=', 'ANULADA')->sum('vta_total');
+        $datos['variacionMes'] = $totalPrev > 0 ? round((($totalIngresos - $totalPrev) / $totalPrev) * 100, 1) : null;
+
+        // ---- Hoy
+        $ventasHoy = Venta::whereBetween('vta_fecha', [$hoyInicio, $hoyFin])->where('vta_estado', '!=', 'ANULADA');
+        $deuda = DB::table('cuentas_cobrar')->where('cred_estado', 'PENDIENTE');
+        $datos['hoy'] = [
+            'ventas_cant' => (clone $ventasHoy)->count(),
+            'ventas_total' => (float) (clone $ventasHoy)->sum('vta_total'),
+            'cobros_total' => (float) DB::table('cobranzas')->whereBetween('cob_fecha', [$hoyInicio, $hoyFin])
+                ->where('cob_estado', '!=', 'ANULADA')->sum('cob_monto_total'),
+            'cajas_abiertas' => DB::table('caja_sesiones')->where('ses_estado', 'ABIERTA')->count(),
+            'deuda_total' => (float) (clone $deuda)->sum('cred_saldo_pendiente'),
+            'deuda_vencida' => (float) (clone $deuda)->where('cred_fecha_vencimiento', '<', $hoyInicio)->sum('cred_saldo_pendiente'),
+        ];
+
+        // ---- Gráficos del mes
         $ventasPorDia = Venta::select(DB::raw('DATE(vta_fecha) as fecha'), DB::raw('SUM(vta_total) as total'))
-            ->whereBetween('vta_fecha', [$inicioMes, $finMes])
-            ->where('vta_estado', '!=', 'ANULADA')
-            ->groupBy('fecha')
-            ->orderBy('fecha')
-            ->get();
-            
-        $fechasLine = $ventasPorDia->pluck('fecha')->map(function($date) { return Carbon::parse($date)->format('d/m'); });
-        $totalesLine = $ventasPorDia->pluck('total');
+            ->whereBetween('vta_fecha', [$inicioMes, $finMes])->where('vta_estado', '!=', 'ANULADA')
+            ->groupBy('fecha')->orderBy('fecha')->get();
+        $datos['fechasLine'] = $ventasPorDia->pluck('fecha')->map(fn ($d) => Carbon::parse($d)->format('d/m'));
+        $datos['totalesLine'] = $ventasPorDia->pluck('total');
 
-        // 4. Gráfico Circular (Métodos de Pago)
         $ventasPorPago = Venta::select('vta_formapago', DB::raw('COUNT(*) as cantidad'))
-            ->whereBetween('vta_fecha', [$inicioMes, $finMes])
-            ->where('vta_estado', '!=', 'ANULADA')
-            ->groupBy('vta_formapago')
-            ->get();
-            
-        $labelsPie = $ventasPorPago->pluck('vta_formapago');
-        $datosPie = $ventasPorPago->pluck('cantidad');
+            ->whereBetween('vta_fecha', [$inicioMes, $finMes])->where('vta_estado', '!=', 'ANULADA')
+            ->groupBy('vta_formapago')->get();
+        $datos['labelsPie'] = $ventasPorPago->pluck('vta_formapago');
+        $datos['datosPie'] = $ventasPorPago->pluck('cantidad');
 
-        // 5. Gráfico de Barras (Tipos de Venta)
         $ventasPorTipo = Venta::select('vta_tipo', DB::raw('SUM(vta_total) as total'))
-            ->whereBetween('vta_fecha', [$inicioMes, $finMes])
-            ->where('vta_estado', '!=', 'ANULADA')
-            ->groupBy('vta_tipo')
-            ->get();
+            ->whereBetween('vta_fecha', [$inicioMes, $finMes])->where('vta_estado', '!=', 'ANULADA')
+            ->groupBy('vta_tipo')->get();
+        $datos['labelsBar'] = $ventasPorTipo->pluck('vta_tipo');
+        $datos['datosBar'] = $ventasPorTipo->pluck('total');
 
-        $labelsBar = $ventasPorTipo->pluck('vta_tipo');
-        $datosBar = $ventasPorTipo->pluck('total');
-
-        return view('dashboard', compact(
-            'mesNombre', 'totalIngresos', 'totalOperaciones', 'nuevosClientes', 'productosActivos',
-            'fechasLine', 'totalesLine', 'labelsPie', 'datosPie', 'labelsBar', 'datosBar'
-        ));
+        return view('dashboard', $datos);
     }
 }

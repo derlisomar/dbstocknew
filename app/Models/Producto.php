@@ -13,7 +13,8 @@ class Producto extends Model
 protected $fillable = [
         'cat_id', 'prov_id', 'suc_id', 'dep_id', 'pro_codigo', 'pro_nombre', 
         'pro_descripcion', 'pro_preciocosto', 'pro_precioventa', 'pro_preciomayorista', 
-        'pro_stockactual', 'pro_stockminimo', 'pro_fechavencimiento', 'pro_imagen', 'pro_activo','pro_permite_mayorista',
+        // 'pro_stockactual' NO es de asignación masiva: el stock solo cambia con StockService (deja historial).
+        'pro_stockminimo', 'pro_fechavencimiento', 'pro_imagen', 'pro_activo','pro_permite_mayorista',
         'pro_en_promocion',
         'pro_precio_promocional',
         'pro_tipo_iva'

@@ -103,9 +103,7 @@
                         <input type="checkbox" name="remember" class="w-4 h-4 rounded border-gray-700 bg-[#1c2434] text-blue-600 focus:ring-blue-500 cursor-pointer">
                         <span class="text-gray-400 group-hover:text-gray-300">Mantenme conectado</span>
                     </label>
-                    @if (Route::has('password.request'))
-                        <a href="{{ route('password.request') }}" class="text-blue-500 hover:underline">¿Has olvidado tu contraseña?</a>
-                    @endif
+               
                 </div>
 
                 <button type="submit" class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition">
@@ -114,7 +112,7 @@
             </form>
 
             <div class="mt-8 text-sm text-gray-400">
-                ¿No tienes cuenta? <a href="{{ route('register') }}" class="text-blue-500 hover:underline">Regístrate</a>
+                ¿Necesitás acceso o olvidaste tu clave? Pedíselo al administrador del sistema.
             </div>
         </div>
     </div>

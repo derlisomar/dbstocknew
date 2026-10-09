@@ -139,6 +139,7 @@
                             
                             <td class="py-3.5 px-4 text-center space-x-1">
                                 @if($venta->vta_estado !== 'ANULADA')
+                                    <a href="{{ route('operaciones.ventas.ticket', $venta->vta_id) }}" target="_blank" class="inline-block text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 px-2.5 py-1 rounded font-bold text-xs transition" title="Reimprimir ticket (copia)">🖨️ Ticket</a>
                                     <!-- Botón que activa el modal pasando el JSON de la venta -->
                                 <button @click='abrirModalDevolucion(@json($venta))' class="text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 px-2.5 py-1 rounded font-bold text-xs transition" title="Gestionar Devoluciones">
                                     🔄 Devolución
@@ -220,6 +221,11 @@
 
 
 
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Motivo de la devolución</label>
+                <input type="text" name="motivo" maxlength="255" placeholder="Ej.: producto vencido, error de cantidad..." class="w-full rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 py-2 px-3 text-xs text-gray-800 dark:text-white outline-none">
+            </div>
+
             <div class="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <button type="button" @click="showDevolucionModal = false" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl text-xs font-bold transition">Cancelar</button>
                 <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-md transition">Confirmar Devolución</button>
@@ -269,6 +275,10 @@ function historialVentasApp() {
                     title: '¿Deseas anular esta venta?',
                     text: "El inventario será devuelto al stock y el balance de caja se ajustará automáticamente.",
                     icon: 'warning',
+                    input: 'text',
+                    inputPlaceholder: 'Motivo de la anulación (obligatorio)',
+                    inputAttributes: { maxlength: 255 },
+                    inputValidator: (valor) => (!valor || valor.trim().length < 3) ? 'Escribí el motivo de la anulación.' : null,
                     showCancelButton: true,
                     confirmButtonColor: '#d33',
                     cancelButtonColor: '#3085d6',
@@ -276,6 +286,11 @@ function historialVentasApp() {
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        const campo = document.createElement('input');
+                        campo.type = 'hidden';
+                        campo.name = 'motivo';
+                        campo.value = result.value;
+                        form.appendChild(campo);
                         form.submit();
                     }
                 });

@@ -94,7 +94,10 @@
                         </td>
                        
                 <td class="py-3 px-5 text-right space-x-2">
-                    <a href="{{ route('promociones.toggle', $promo->prom_id) }}" class="text-xs font-bold text-blue-600 hover:text-blue-800" title="Cambiar Estado">🔄</a>
+                    <form action="{{ route('promociones.toggle', $promo->prom_id) }}" method="POST" class="inline-block">
+                        @csrf
+                        <button type="submit" class="text-xs font-bold text-blue-600 hover:text-blue-800" title="Cambiar Estado">🔄</button>
+                    </form>
                     
                     <button @click='openEdit(@json($promo))' class="text-yellow-600 hover:text-yellow-800" title="Editar">✏️</button>
                     

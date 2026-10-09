@@ -31,7 +31,8 @@ class ClienteController extends Controller
             'cli_limite_credito' => 'nullable|numeric|min:0',
         ]);
 
-        Cliente::create($request->all());
+        // Alta: sin crédito habilitado y sin bloqueo; esos valores los cambia quien tenga CLIENTES_CREDITO
+        Cliente::create($this->datosPermitidos($request) + ['cli_permitir_credito' => false, 'cli_bloqueado' => false]);
         return redirect()->route('clientes.index')->with('success', 'Cliente registrado correctamente.');
     }
 
@@ -49,7 +50,7 @@ class ClienteController extends Controller
             'cli_limite_credito' => 'nullable|numeric|min:0',
         ]);
 
-        $cliente->update($request->all());
+        $cliente->update($this->datosPermitidos($request));
         return redirect()->route('clientes.index')->with('success', 'Cliente actualizado correctamente.');
     }
 
@@ -57,5 +58,25 @@ class ClienteController extends Controller
     {
         Cliente::findOrFail($id)->delete();
         return redirect()->route('clientes.index')->with('success', 'Cliente eliminado correctamente.');
+    }
+
+    /**
+     * Campos que se pueden guardar desde el formulario. Antes se guardaba todo lo que llegara
+     * (request->all()), incluso bloquear o habilitar crédito.
+     * Mayorista y límite de crédito solo los cambia quien tiene el permiso CLIENTES_CREDITO.
+     */
+    private function datosPermitidos(Request $request): array
+    {
+        $datos = $request->only(['cli_ruc_ci', 'cli_nombre', 'cli_apellido', 'cli_telefono', 'cli_email', 'cli_direccion']);
+
+        if ($request->user()->tienePermiso('CLIENTES_CREDITO')) {
+            $datos['cli_limite_credito'] = $request->input('cli_limite_credito') ?: 0;
+
+            if ($request->has('cli_es_mayorista')) {
+                $datos['cli_es_mayorista'] = $request->boolean('cli_es_mayorista');
+            }
+        }
+
+        return $datos;
     }
 }

@@ -21,7 +21,14 @@ class CajaSesion extends Model
         'ses_monto_cierre_gs',
         'ses_monto_cierre_usd',
         'ses_monto_cierre_brl',
-        'ses_estado'
+        'ses_estado',
+        'ses_esperado_gs',
+        'ses_esperado_usd',
+        'ses_esperado_brl',
+        'ses_diferencia_gs',
+        'ses_diferencia_usd',
+        'ses_diferencia_brl',
+        'ses_observacion_cierre'
     ];
 
     public function caja()

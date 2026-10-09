@@ -16,6 +16,11 @@ class DetalleCobranza extends Model
         'det_monto_pagado'
     ];
 
+    public function cuenta()
+    {
+        return $this->belongsTo(CuentasCobrar::class, 'cred_id', 'cred_id');
+    }
+
     public function cobranza()
         {
             return $this->belongsTo(Cobranza::class, 'cob_id', 'cob_id');

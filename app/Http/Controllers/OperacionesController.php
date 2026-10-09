@@ -6,7 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\Venta;
 use App\Models\Cotizacion;
 use App\Models\Cliente;
-use Illuminate\Support\Facades\DB;
+use App\Exceptions\NegocioException;
+use App\Services\VentaService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class OperacionesController extends Controller
 {
@@ -67,70 +70,31 @@ public function historialVentas(Request $request)
             'totalMontoGs'
         ));
     }
-    public function anularVenta(Request $request, $id)
+    public function anularVenta(Request $request, $id, VentaService $ventas)
     {
+        $datos = $request->validate([
+            'motivo' => ['nullable', 'string', 'max:255'],
+        ]);
+
         try {
-            $venta = Venta::with(['detalles.producto', 'sesion.caja'])->find($id);
+            $venta = $ventas->anular((int) $id, $request->user(), $datos['motivo'] ?? null);
+        } catch (NegocioException $e) {
+            return redirect()->route('operaciones.ventas')->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            $codigo = strtoupper(Str::random(6));
+            Log::error("Error anulando venta [{$codigo}]", ['venta' => $id, 'exception' => $e]);
 
-            if (!$venta) {
-                return redirect()->route('operaciones.ventas')->with('error', 'Venta no encontrada.');
-            }
-
-            if ($venta->vta_estado === 'ANULADA') {
-                return redirect()->route('operaciones.ventas')->with('warning', 'Esta venta ya se encuentra anulada.');
-            }
-
-            $usuario = \Auth::user();
-
-            // 1. Validar Permisos (Opcional: Si solo Admin puede anular)
-            // if ($usuario->role !== 'admin') { ... return error ... }
-
-            DB::beginTransaction();
-
-            // 2. Devolver el Stock al Inventario
-            foreach ($venta->detalles as $detalle) {
-                $producto = $detalle->producto;
-                $producto->pro_stockactual += $detalle->det_cantidad;
-                $producto->save();
-            }
-
-            // 3. Registrar el Movimiento de Egreso en Caja (Reversión de dinero)
-            // Buscamos la caja asociada a la sesión donde se realizó la venta
-            $sesion = $venta->sesion;
-            $caja = $sesion ? $sesion->caja : null;
-
-            if ($caja) {
-                $monto = $venta->vta_total;
-                $columnaSaldo = 'caj_saldo_' . strtolower($venta->vta_moneda ?? 'gs');
-                
-                // Restar el monto de la caja
-                $caja->decrement($columnaSaldo, $monto);
-
-                // Registrar el egreso
-                \App\Models\CajaMovimiento::create([
-                    'ses_id' => $sesion->ses_id,
-                    'mov_tipo' => 'EGRESO', // OJO: Egreso
-                    'mov_monto' => $monto,
-                    'mov_concepto' => 'Anulación Venta Nro. ' . $venta->vta_id,
-                    'mov_moneda' => $venta->vta_moneda ?? 'GS',
-                ]);
-            } else {
-                 \Log::warning("No se pudo anular movimiento de caja para Venta ID: {$venta->vta_id}");
-            }
-
-            // 4. Actualizar el Estado de la Venta a ANULADA
-            $venta->vta_estado = 'ANULADA';
-            $venta->save();
-
-            DB::commit();
-
-            return redirect()->route('operaciones.ventas')->with('success', 'Venta Nro. ' . $venta->vta_id . ' anulada correctamente y stock devuelto.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error("Error anulando venta: " . $e->getMessage());
-            return redirect()->route('operaciones.ventas')->with('error', 'Error al anular la venta: ' . $e->getMessage());
+            return redirect()->route('operaciones.ventas')
+                ->with('error', "No se pudo anular la venta. Avisá al administrador (código {$codigo}).");
         }
+
+        $mensaje = 'Venta Nro. '.$venta->vta_id.' anulada: stock devuelto y caja ajustada.';
+
+        if ($venta->vta_nro_factura) {
+            $mensaje .= ' Atención: tenía la factura Nro. '.$venta->vta_nro_factura.'. El sistema no emite nota de crédito; consultá con tu contador cómo registrarla.';
+        }
+
+        return redirect()->route('operaciones.ventas')->with('success', $mensaje);
     }
 
     public function exportarExcel(Request $request)
@@ -207,78 +171,48 @@ public function historialVentas(Request $request)
         return view('operaciones.pdf', compact('ventas', 'tasaUsd', 'tasaBrl'));
     }
 
-    public function procesarDevolucion(Request $request, $id)
+    /**
+     * Reimprime el ticket de una venta, marcado como COPIA. Queda registrado en la auditoría.
+     * Las ventas anuladas no se reimprimen (no hay que entregar un comprobante de algo anulado).
+     */
+    public function reimprimir(Request $request, $id)
     {
-    try {
-        \Illuminate\Support\Facades\DB::beginTransaction();
-
-        $venta = \App\Models\Venta::with('detalles')->findOrFail($id);
+        $venta = Venta::with(['detalles.producto', 'cliente', 'sesion.caja', 'sucursal'])->findOrFail($id);
 
         if ($venta->vta_estado === 'ANULADA') {
-            return back()->with('error', 'No se pueden procesar devoluciones de una venta ya anulada.');
+            return back()->with('error', 'La venta #'.$venta->vta_id.' está anulada: no se puede reimprimir su ticket.');
         }
 
-        $itemsDevueltos = $request->input('items', []); // Array [det_vta_id => cantidad]
-        if (empty($itemsDevueltos)) {
-            return back()->with('error', 'Debe seleccionar al menos un ítem para devolver.');
-        }
+        \App\Services\AuditoriaService::registrar('TICKET_REIMPRESO', 'ventas', $venta->vta_id, [
+            'nro_factura' => $venta->vta_nro_factura,
+        ]);
 
-        $montoTotalDevolucion = 0;
+        $copia = true;
 
-        foreach ($itemsDevueltos as $detVtaId => $cantidadDevolver) {
-            $cantidadDevolver = intval($cantidadDevolver);
-            if ($cantidadDevolver <= 0) continue;
-
-            $detalle = \App\Models\DetalleVenta::findOrFail($detVtaId);
-
-            if ($cantidadDevolver > $detalle->det_cantidad) {
-                return back()->with('error', 'La cantidad a devolver excede lo vendido originalmente.');
-            }
-
-            // 1. Restaurar stock del producto
-            $producto = \App\Models\Producto::find($detalle->pro_id);
-            if ($producto) {
-                $producto->increment('pro_stockactual', $cantidadDevolver);
-            }
-
-            // 2. Calcular monto proporcional devuelto
-            $subtotalDevuelto = $detalle->det_preciounitario * $cantidadDevolver;
-            $montoTotalDevolucion += $subtotalDevuelto;
-
-            // 3. Actualizar detalle de venta
-            $detalle->det_cantidad -= $cantidadDevolver;
-            $detalle->det_subtotal = $detalle->det_cantidad * $detalle->det_preciounitario;
-            $detalle->save();
-        }
-
-        // Actualizar el total general de la venta
-        $venta->vta_total -= $montoTotalDevolucion;
-        if ($venta->vta_total < 0) $venta->vta_total = 0;
-        $venta->save();
-
-        // 4. Afectar la Caja (Registrar egreso si fue al CONTADO)
-        if ($venta->vta_tipo === 'CONTADO' && $montoTotalDevolucion > 0) {
-            \App\Models\CajaMovimiento::create([
-                'ses_id' => $venta->ses_id,
-                'mov_tipo' => 'EGRESO',
-                'mov_monto' => $montoTotalDevolucion,
-                'mov_concepto' => 'Devolución de ítems - Venta Nro. ' . $venta->vta_id,
-                'mov_moneda' => 'GS'
-            ]);
-
-            $sesion = \App\Models\CajaSesion::with('caja')->find($venta->ses_id);
-            if ($sesion && $sesion->caja) {
-                $sesion->caja->decrement('caj_saldo_gs', $montoTotalDevolucion);
-            }
-        }
-
-        \Illuminate\Support\Facades\DB::commit();
-        return back()->with('success', 'Devolución procesada correctamente. Stock y caja actualizados.');
-
-    } catch (\Exception $e) {
-        \Illuminate\Support\Facades\DB::rollBack();
-        return back()->with('error', 'Error al procesar la devolución: ' . $e->getMessage());
+        return view($venta->vta_nro_factura ? 'pdv.ticket-factura' : 'pdv.ticket-simple', compact('venta', 'copia'));
     }
-}
 
+    public function procesarDevolucion(Request $request, $id, VentaService $ventas)
+    {
+        $datos = $request->validate([
+            'items' => ['required', 'array'],
+            'items.*' => ['nullable', 'numeric', 'min:0'],
+            'motivo' => ['nullable', 'string', 'max:255'],
+        ], [
+            'items.required' => 'Debe seleccionar al menos un ítem para devolver.',
+        ]);
+
+        try {
+            $resultado = $ventas->devolver((int) $id, $datos['items'], $request->user(), $datos['motivo'] ?? null);
+        } catch (NegocioException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            $codigo = strtoupper(Str::random(6));
+            Log::error("Error procesando devolución [{$codigo}]", ['venta' => $id, 'exception' => $e]);
+
+            return back()->with('error', "No se pudo procesar la devolución. Avisá al administrador (código {$codigo}).");
+        }
+
+        return back()->with('success', 'Devolución procesada por Gs. '.number_format($resultado['total'], 0, ',', '.').'. Stock, caja y deuda actualizados.');
+    }
 }

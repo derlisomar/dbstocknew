@@ -30,6 +30,15 @@
     }
 }">
     
+@if(session('success'))
+    <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ session('success') }}</div>
+@endif
+@if($errors->any())
+    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p class="font-bold mb-1">No se guardó el producto:</p>
+        <ul class="list-disc pl-5">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+    </div>
+@endif
 <!-- Encabezado y Botón Nuevo -->
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -170,7 +179,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-xs uppercase text-gray-500">Stock Actual</label>
-                        <input type="number" name="pro_stockactual" x-model="pro_stockactual" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2" required>
+                        <input type="number" step="0.01" min="0" name="pro_stockactual" x-model="pro_stockactual" :readonly="editMode" :disabled="editMode" :class="editMode ? 'bg-gray-100 cursor-not-allowed' : ''" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2">
+                        <p x-show="editMode" class="text-[10px] text-gray-400 mt-1">Se corrige en Inventario.</p>
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-gray-500">Stock Mínimo</label>

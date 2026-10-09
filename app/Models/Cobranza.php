@@ -17,8 +17,27 @@ class Cobranza extends Model
         'ses_id',
         'cob_fecha',
         'cob_monto_total',
-        'cob_estado'
+        'cob_estado',
+        'cob_formapago',
+        'cob_anulada_por',
+        'cob_anulada_fecha',
+        'cob_motivo_anulacion',
     ];
+
+    public function detalles()
+    {
+        return $this->hasMany(DetalleCobranza::class, 'cob_id', 'cob_id');
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class, 'cli_id', 'cli_id');
+    }
+
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'usu_id', 'usu_id');
+    }
 
     public function sesion()
     {

@@ -90,6 +90,9 @@
                                 <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">
                                     {{ $user->rol->rol_nombre ?? 'Sin Rol' }}
                                 </span>
+                                @if(!$user->usu_activo)
+                                    <span class="ml-2 px-2 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-600">DESACTIVADO</span>
+                                @endif
                             </td>
                             <td class="py-4 px-6 text-center">
                                 <div class="flex items-center justify-center gap-3">
@@ -97,13 +100,22 @@
                                         ✏️
                                     </button>
                                     
-                                    <form action="{{ route('usuarios.destroy', $user->usu_id) }}" method="POST" onsubmit="return confirm('¿Eliminar este usuario?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition" title="Borrar">
-                                            ❌
-                                        </button>
-                                    </form>
+                                    @if($user->usu_activo)
+                                        <form action="{{ route('usuarios.destroy', $user->usu_id) }}" method="POST" onsubmit="return confirm('¿Desactivar este usuario? Ya no podrá iniciar sesión (su historial se conserva).');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition" title="Desactivar">
+                                                ⛔
+                                            </button>
+                                        </form>
+                                    @else
+                                        <form action="{{ route('usuarios.reactivar', $user->usu_id) }}" method="POST" onsubmit="return confirm('¿Reactivar este usuario?');">
+                                            @csrf
+                                            <button type="submit" class="p-2 bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/20 rounded-lg transition" title="Reactivar">
+                                                ✅
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

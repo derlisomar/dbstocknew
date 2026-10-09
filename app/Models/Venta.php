@@ -28,7 +28,10 @@ class Venta extends Model
         'vta_total_iva10',
         'vta_formapago',
         'nro_transferencia',
-        'vta_moneda'
+        'vta_moneda',
+        'vta_anulada_por',
+        'vta_anulada_fecha',
+        'vta_motivo_anulacion'
 
     ];
 

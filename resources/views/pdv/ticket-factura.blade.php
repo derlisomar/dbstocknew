@@ -16,6 +16,9 @@
     </style>
 </head>
 <body onload="window.print(); window.onafterprint = function(){ window.close(); }">
+@if(!empty($copia))
+    <div style="text-align:center;font-weight:bold;border:1px solid #000;margin-bottom:5px;padding:2px;">*** COPIA / REIMPRESION ***</div>
+@endif
     <div class="text-center">
         <h2 style="margin: 0; font-size: 16px;">MI EMPRESA S.A.</h2>
         <p style="margin: 2px 0;">RUC: 80001234-5</p>
