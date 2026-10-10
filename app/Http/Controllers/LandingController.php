@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\NegocioException;
+use App\Services\ConfiguracionService as Cfg;
 use App\Services\DemoService;
+use App\Services\PlanesPublicos;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +20,12 @@ class LandingController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return view('landing.index');
+        return view('landing.index', [
+            'planes' => PlanesPublicos::planes(),
+            'adicionales' => PlanesPublicos::adicionales(),
+            'planesTitulo' => Cfg::get('pub_planes_titulo') ?: 'Planes simples, para cada tamaño de negocio.',
+            'planesTexto' => Cfg::get('pub_planes_texto') ?: 'Elegí el que mejor se ajuste hoy y cambiá de plan cuando tu negocio crezca.',
+        ]);
     }
 
     public function demo(Request $request, DemoService $demos): JsonResponse

@@ -36,6 +36,12 @@ trait EsquemaTest
 
         $migracion9 = require database_path('migrations/2026_10_15_000001_parte9_demo_solicitudes.php');
         $migracion9->up();
+
+        $migracion10 = require database_path('migrations/2026_10_16_000001_parte10_contabilidad.php');
+        $migracion10->up();
+
+        $migracion11 = require database_path('migrations/2026_10_17_000001_parte11_planes_publicos.php');
+        $migracion11->up();
     }
 
     /** En PostgreSQL, tras insertar ids a mano hay que avanzar las secuencias (SQLite no lo necesita). */
@@ -116,7 +122,7 @@ trait EsquemaTest
         });
         Schema::create('caja_movimientos', function (Blueprint $t) {
             $t->increments('mov_id'); $t->unsignedInteger('ses_id'); $t->string('mov_tipo'); $t->decimal('mov_monto', 18, 2);
-            $t->string('mov_concepto')->nullable(); $t->string('mov_moneda')->nullable(); $t->unsignedInteger('caj_id_destino')->nullable();
+            $t->string('mov_concepto')->nullable(); $t->string('mov_moneda')->nullable(); $t->unsignedInteger('caj_id_destino')->nullable(); $t->dateTime('mov_fecha')->nullable();
         });
         Schema::create('cuentas_cobrar', function (Blueprint $t) {
             $t->increments('cred_id'); $t->unsignedInteger('vta_id'); $t->unsignedInteger('cli_id'); $t->decimal('cred_monto_total', 18, 2);

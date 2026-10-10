@@ -69,6 +69,11 @@ return [
             'descripcion' => 'Pantalla para consultar quién hizo qué y cuándo.',
             'basica' => false,
         ],
+        'contabilidad' => [
+            'nombre' => 'Contabilidad',
+            'descripcion' => 'Asientos automáticos, libro diario y mayor, balances, libro IVA y ajustes contables. Solo en la edición completa.',
+            'basica' => false,
+        ],
         'multimoneda' => [
             'nombre' => 'Ventas en dólares y reales',
             'descripcion' => 'Permite cobrar en USD o BRL además de guaraníes, con cotización.',

@@ -46,6 +46,11 @@
     </div>
 
     <!-- Alertas Flash -->
+    @if($errors->any())
+        <div class="p-4 bg-red-100 dark:bg-red-500/10 border border-red-400 text-red-700 dark:text-red-400 rounded-lg font-semibold">
+            @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+        </div>
+    @endif
     @if(session('success'))
         <div class="p-4 bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-400 text-emerald-700 dark:text-emerald-400 rounded-lg">
             {{ session('success') }}

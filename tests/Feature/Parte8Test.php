@@ -581,9 +581,11 @@ class Parte8Test extends TestCase
 
     public function test_la_migracion_se_puede_correr_dos_veces_sin_duplicar_planes(): void
     {
+        $antes = DB::table('planes')->count();
         (require database_path('migrations/2026_10_14_000001_parte8_panel_vendedor.php'))->up();
 
-        $this->assertEquals(2, DB::table('planes')->count());
+        $this->assertEquals($antes, DB::table('planes')->count());
+        $this->assertSame(1, DB::table('planes')->where('plan_nombre', 'Básico')->count());
     }
 
     public function test_el_comando_de_clave_genera_la_linea_para_el_env(): void

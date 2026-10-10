@@ -68,6 +68,14 @@ class FinanzasController extends Controller
                     'ses_estado' => 'ABIERTA',
                 ]);
 
+                // El efectivo con el que arranca el turno pasa a ser el saldo físico de la caja. Como no hay otra sesión
+                // abierta, el saldo anterior es solo un resto de turnos viejos: se reemplaza (el cierre lo deja en cero).
+                $caja->update([
+                    'caj_saldo_gs' => (float) $request->ses_monto_inicial_gs,
+                    'caj_saldo_usd' => (float) ($request->ses_monto_inicial_usd ?? 0),
+                    'caj_saldo_brl' => (float) ($request->ses_monto_inicial_brl ?? 0),
+                ]);
+
                 AuditoriaService::registrar('CAJA_APERTURA', 'caja_sesiones', $sesion->ses_id, [
                     'caja' => $caja->caj_id,
                     'inicial_gs' => (float) $request->ses_monto_inicial_gs,

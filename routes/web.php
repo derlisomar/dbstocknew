@@ -25,11 +25,13 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\PromocionController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\ReporteRentabilidadController;
+use App\Http\Controllers\ContabilidadController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\Vendedor\AccesoController as VendedorAcceso;
 use App\Http\Controllers\Vendedor\EstructuraController as VendedorEstructura;
+use App\Http\Controllers\Vendedor\ExtrasController as VendedorExtras;
 use App\Http\Controllers\Vendedor\LicenciaController as VendedorLicencia;
 use App\Http\Controllers\Vendedor\PanelController as VendedorPanel;
 use Illuminate\Support\Facades\Route;
@@ -204,6 +206,33 @@ Route::middleware(['auth', 'licencia'])->group(function () {
     Route::post('/finanzas/ingresos-egresos/store', [IngresoEgresoController::class, 'store'])
         ->middleware('permiso:CAJA_INGRESO_EGRESO')->name('finanzas.ingresos_egresos.store');
 
+    // ---------------------------------------------------------------- Contabilidad (solo edición completa)
+    Route::prefix('contabilidad')->name('contabilidad.')->middleware('modulo:contabilidad')->group(function () {
+        Route::middleware('permiso:CONTABILIDAD_VER')->group(function () {
+            Route::get('/', [ContabilidadController::class, 'index'])->name('index');
+            Route::post('/sincronizar', [ContabilidadController::class, 'sincronizar'])->name('sincronizar');
+            Route::get('/diario', [ContabilidadController::class, 'diario'])->name('diario');
+            Route::get('/mayor', [ContabilidadController::class, 'mayor'])->name('mayor');
+            Route::get('/sumas-y-saldos', [ContabilidadController::class, 'sumas'])->name('sumas');
+            Route::get('/estado-de-resultados', [ContabilidadController::class, 'resultados'])->name('resultados');
+            Route::get('/balance-general', [ContabilidadController::class, 'balance'])->name('balance');
+            Route::get('/libro-iva/{libro}', [ContabilidadController::class, 'libroIva'])->whereIn('libro', ['ventas', 'compras'])->name('iva');
+            Route::get('/plan-de-cuentas', [ContabilidadController::class, 'plan'])->name('plan');
+        });
+
+        Route::middleware('permiso:CONTABILIDAD_GESTIONAR')->group(function () {
+            Route::post('/preparar', [ContabilidadController::class, 'preparar'])->name('preparar');
+            Route::post('/plan-de-cuentas', [ContabilidadController::class, 'cuentaGuardar'])->name('cuenta.guardar');
+            Route::put('/plan-de-cuentas/{id}', [ContabilidadController::class, 'cuentaActualizar'])->whereNumber('id')->name('cuenta.actualizar');
+            Route::get('/mapeos', [ContabilidadController::class, 'mapeos'])->name('mapeos');
+            Route::post('/mapeos', [ContabilidadController::class, 'mapeosGuardar'])->name('mapeos.guardar');
+            Route::get('/asiento-manual', [ContabilidadController::class, 'asientoNuevo'])->name('asiento.nuevo');
+            Route::post('/asiento-manual', [ContabilidadController::class, 'asientoGuardar'])->name('asiento.guardar');
+            Route::post('/asiento/{id}/anular', [ContabilidadController::class, 'asientoAnular'])->whereNumber('id')->name('asiento.anular');
+            Route::post('/cierre-de-periodo', [ContabilidadController::class, 'cerrarPeriodo'])->name('periodo');
+        });
+    });
+
     // ---------------------------------------------------------------- Reportes
     Route::middleware(['permiso:REPORTES_VER', 'modulo:reportes_avanzados'])->group(function () {
         Route::get('/operaciones/reporte-abc', [ReporteRentabilidadController::class, 'index'])->name('operaciones.reporte_abc');
@@ -255,7 +284,17 @@ Route::prefix(config('vendedor.ruta', 'panel-vendedor'))->name('vendedor.')->gro
         Route::get('/planes', [VendedorLicencia::class, 'planes'])->name('planes');
         Route::post('/planes', [VendedorLicencia::class, 'guardarPlan'])->name('planes.crear');
         Route::put('/planes/{id}', [VendedorLicencia::class, 'guardarPlan'])->whereNumber('id')->name('planes.editar');
+        Route::post('/planes/adicionales', [VendedorLicencia::class, 'guardarAdicionales'])->name('planes.adicionales');
         Route::post('/planes/{id}/estado', [VendedorLicencia::class, 'estadoPlan'])->whereNumber('id')->name('planes.estado');
+
+        Route::get('/respaldos', [VendedorExtras::class, 'respaldos'])->name('respaldos');
+        Route::post('/respaldos', [VendedorExtras::class, 'crearRespaldo'])->name('respaldos.crear');
+        Route::get('/respaldos/{nombre}', [VendedorExtras::class, 'descargarRespaldo'])->where('nombre', '[A-Za-z0-9_.]+')->name('respaldos.descargar');
+        Route::get('/historial', [VendedorExtras::class, 'historial'])->name('historial');
+        Route::get('/demos', [VendedorExtras::class, 'demos'])->name('demos');
+        Route::get('/licencia/pagos/{id}/recibo', [VendedorExtras::class, 'recibo'])->whereNumber('id')->name('licencia.recibo');
+        Route::post('/licencia/aviso', [VendedorExtras::class, 'enviarAviso'])->name('licencia.aviso');
+        Route::post('/herramientas/instalar', [VendedorExtras::class, 'instalar'])->name('herramientas.instalar');
 
         Route::get('/licencia', [VendedorLicencia::class, 'licencia'])->name('licencia');
         Route::post('/licencia/plan', [VendedorLicencia::class, 'aplicarPlan'])->name('licencia.plan');

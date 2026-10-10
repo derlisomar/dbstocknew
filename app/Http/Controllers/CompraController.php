@@ -78,6 +78,7 @@ class CompraController extends Controller
             'prov_id' => ['required', 'integer', 'exists:proveedores,prov_id'],
             'fecha' => ['nullable', 'date'],
             'nro_documento' => ['nullable', 'string', 'max:40'],
+            'timbrado' => ['nullable', 'string', 'max:20'],
             'tipo' => ['required', 'in:CONTADO,CREDITO'],
             'vencimiento' => ['nullable', 'date'],
             'forma_pago' => ['nullable', 'in:'.implode(',', PagoProveedorService::FORMAS)],

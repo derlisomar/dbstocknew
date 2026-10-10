@@ -49,7 +49,7 @@
             <a href="#servicios">Servicios</a>
             <a href="#funciones">dbstock</a>
             <a href="#capturas">Así se ve</a>
-            <a href="#planes">Ediciones</a>
+            <a href="#planes">{{ ($planes ?? collect())->isNotEmpty() ? 'Planes' : 'Ediciones' }}</a>
             <a href="#contacto">Contacto</a>
             <a class="x" href="{{ \App\Support\Dominios::urlApp('/login') }}">Ingresar al sistema</a>
         </nav>
@@ -177,6 +177,12 @@
                     <h3>Sucursales y permisos</h3>
                     <p>Varias sucursales y un usuario para cada persona, con los permisos justos. Queda registrado quién hizo cada cosa.</p>
                 </article>
+                <article class="tile t-con rv">
+                    <span class="tag-ed">Solo en la edición completa</span>
+                    <div class="badge"><svg class="ic"><use href="#i-seal-check"/></svg></div>
+                    <h3>Contabilidad integrada</h3>
+                    <p>Cada venta, cobro, compra y cierre de caja genera su asiento contable solo, sin cargar nada dos veces. Libro diario y mayor, balances, resultado del mes y diferencia de cambio en dólares y reales. Elegís a qué cuenta va cada forma de pago y cada categoría, cargás ajustes por faltantes de inventario o de caja, y sacás el libro de IVA de ventas y compras para tu declaración.</p>
+                </article>
             </div>
         </div>
     </section>
@@ -251,6 +257,89 @@
         </div>
     </section>
 
+    @if (($planes ?? collect())->isNotEmpty())
+    <section class="sec alt" id="planes">
+        <div class="wrap">
+            <div class="sec-head rv">
+                <h2>{{ $planesTitulo }}</h2>
+                <p>{{ $planesTexto }}</p>
+                <ul class="pl-chips">
+                    <li><svg class="ic"><use href="#i-calendar-check"/></svg>{{ $dias }} días para probar</li>
+                    <li><svg class="ic"><use href="#i-seal-check"/></svg>Sin tarjeta</li>
+                    <li><svg class="ic"><use href="#i-check"/></svg>Sin contratos largos</li>
+                </ul>
+            </div>
+            @php
+                // Los planes con precio van en tarjetas; los "a consultar" (sin precio) van en una franja aparte.
+                $conPrecio = $planes->filter(fn ($p) => (float) $p->plan_precio > 0)->values();
+                $aMedida = $planes->filter(fn ($p) => (float) $p->plan_precio <= 0)->values();
+            @endphp
+            @if ($conPrecio->isNotEmpty())
+            <div class="pl-grid pl-n{{ min($conPrecio->count(), 4) }}">
+                @foreach ($conPrecio as $i => $pl)
+                    @php
+                        $boton = $pl->plan_boton ?: 'Probar este plan';
+                        $enlace = '#demo';
+                    @endphp
+                    <article class="pl rv {{ $pl->plan_destacado ? 'pl-main' : '' }}" style="--d:{{ $i }}">
+                        @if ($pl->plan_etiqueta)<span class="pl-tag">{{ $pl->plan_etiqueta }}</span>@endif
+                        <h3>{{ $pl->plan_nombre }}</h3>
+                        @if ($pl->plan_descripcion)<p class="pl-for">{{ $pl->plan_descripcion }}</p>@endif
+                        <div class="pl-precio">
+                            <span class="pl-monto">{{ \App\Services\PlanesPublicos::gs($pl->plan_precio) }}</span><span class="pl-per">{{ $pl->periodoTexto() }}</span>
+                        </div>
+                        <dl class="pl-lim">
+                            <div><dt>Sucursales</dt><dd>{{ $pl->plan_max_sucursales > 0 ? $pl->plan_max_sucursales : 'Ilimitadas' }}</dd></div>
+                            <div><dt>Cajas</dt><dd>{{ $pl->plan_max_cajas > 0 ? $pl->plan_max_cajas : 'Ilimitados' }}</dd></div>
+                            <div><dt>Usuarios</dt><dd>{{ $pl->plan_max_usuarios > 0 ? $pl->plan_max_usuarios : 'Ilimitados' }}</dd></div>
+                        </dl>
+                        <ul class="pl-lista">
+                            @foreach ($pl->caracteristicas() as $c)
+                                <li class="{{ $c['incluye'] ? '' : 'off' }}"><svg class="ic"><use href="#{{ $c['incluye'] ? 'i-check' : 'i-x' }}"/></svg>{{ $c['texto'] }}</li>
+                            @endforeach
+                        </ul>
+                        <a class="btn {{ $pl->plan_destacado ? 'btn-primary' : 'btn-ghost' }}" href="{{ $enlace }}" @if($enlace !== '#demo') target="_blank" rel="noopener" @endif>{{ $boton }}</a>
+                    </article>
+                @endforeach
+            </div>
+            @endif
+
+            @foreach ($aMedida as $pl)
+                @php
+                    $enlaceMed = $waLink ? 'https://wa.me/'.$wa.'?text='.rawurlencode('Hola, quiero consultar por el plan '.$pl->plan_nombre.' de dbstock.') : '#demo';
+                @endphp
+                <div class="pl-med rv">
+                    <div class="pl-med-t">
+                        <h3>{{ $pl->plan_nombre }}</h3>
+                        @if ($pl->plan_descripcion)<p>{{ $pl->plan_descripcion }}</p>@endif
+                        <span class="pl-med-p">A consultar</span>
+                    </div>
+                    <ul class="pl-med-l">
+                        @foreach ($pl->caracteristicas() as $c)
+                            <li class="{{ $c['incluye'] ? '' : 'off' }}"><svg class="ic"><use href="#{{ $c['incluye'] ? 'i-check' : 'i-x' }}"/></svg>{{ $c['texto'] }}</li>
+                        @endforeach
+                    </ul>
+                    <a class="btn btn-ghost" href="{{ $enlaceMed }}" @if($enlaceMed !== '#demo') target="_blank" rel="noopener" @endif>{{ $pl->plan_boton ?: 'Consultar' }}</a>
+                </div>
+            @endforeach
+
+            @if ($adicionales->isNotEmpty())
+                <div class="pl-flex rv">
+                    <div class="pl-flex-t">
+                        <h3>Capacidad flexible</h3>
+                        <p>¿Tu negocio creció? Sumá lo que necesites sin cambiar de plan.</p>
+                    </div>
+                    <ul>
+                        @foreach ($adicionales as $ad)
+                            <li><span>{{ $ad->ada_nombre }}</span><b>{{ \App\Services\PlanesPublicos::gs($ad->ada_precio) }}<small>/{{ $ad->ada_periodo }}</small></b></li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+            <p class="pl-nota rv">Los precios son en guaraníes y pueden cambiar. Consultanos para una cotización a tu medida.</p>
+        </div>
+    </section>
+    @else
     <section class="sec alt" id="planes">
         <div class="wrap">
             <div class="sec-head rv">
@@ -270,6 +359,7 @@
                         <li><svg class="ic"><use href="#i-check"/></svg>Reportes básicos de ventas</li>
                         <li class="off"><svg class="ic"><use href="#i-x"/></svg>Compras y proveedores</li>
                         <li class="off"><svg class="ic"><use href="#i-x"/></svg>Ventas en dólares y reales</li>
+                        <li class="off"><svg class="ic"><use href="#i-x"/></svg>Contabilidad integrada</li>
                     </ul>
                     <a class="btn btn-ghost" href="#demo">Probar la demo</a>
                 </article>
@@ -284,6 +374,7 @@
                         <li><svg class="ic"><use href="#i-check"/></svg>Reportes de rentabilidad y curva ABC</li>
                         <li><svg class="ic"><use href="#i-check"/></svg>Varias sucursales y depósitos</li>
                         <li><svg class="ic"><use href="#i-check"/></svg>Ventas en guaraníes, dólares y reales</li>
+                        <li><svg class="ic"><use href="#i-check"/></svg>Contabilidad: asientos automáticos, balances y libro IVA</li>
                         <li><svg class="ic"><use href="#i-check"/></svg>Registro de auditoría de cada acción</li>
                     </ul>
                     <a class="btn btn-primary" href="#demo">Probar la demo <svg class="ic ic-go"><use href="#i-arrow-right"/></svg></a>
@@ -291,6 +382,8 @@
             </div>
         </div>
     </section>
+
+    @endif
 
     <section class="sec" id="demo">
         <div class="wrap demo">

@@ -91,6 +91,7 @@ class CompraService
                 'suc_id' => $d['suc_id'] ?? null,
                 'com_fecha' => $fecha->copy()->setTimeFrom(now()),
                 'com_nro_documento' => $nroDoc,
+                'com_timbrado' => \Illuminate\Support\Facades\Schema::hasColumn('compras', 'com_timbrado') && ! empty($d['timbrado']) ? mb_substr(trim((string) $d['timbrado']), 0, 20) : null,
                 'com_tipo' => $tipo,
                 'com_total' => $total,
                 'com_estado' => 'REGISTRADA',

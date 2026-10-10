@@ -17,6 +17,7 @@
             document.documentElement.classList.remove('dark');
         }
     </script>
+    <style>[x-cloak]{display:none !important}</style>
 </head>
 
 <!-- Alpine.js Global Data -->
@@ -35,7 +36,15 @@
             <img x-show="!sidebarExpanded" src="{{ \App\Services\ConfiguracionService::logoUrl() ?? asset('img/logo_mini.png') }}" alt="Logo Mini" class="h-10 w-auto object-contain">
             
             <!-- Logo principal más grande y estético (expandido) -->
-            <img x-show="sidebarExpanded" src="{{ \App\Services\ConfiguracionService::logoUrl() ?? asset('img/logo.png') }}" alt="{{ \App\Services\ConfiguracionService::nombreNegocio() }}" class="h-12 w-auto object-contain">
+            @php $logoPropio = \App\Services\ConfiguracionService::logoUrl(); @endphp
+            @if($logoPropio)
+                <img x-show="sidebarExpanded" src="{{ $logoPropio }}" alt="{{ \App\Services\ConfiguracionService::nombreNegocio() }}" class="h-12 w-auto object-contain">
+            @else
+                {{-- Logo por defecto: versión a color en modo claro y versión blanca en modo oscuro --}}
+                <style>.logo-def-oscuro{display:none}html.dark .logo-def-claro{display:none}html.dark .logo-def-oscuro{display:block}</style>
+                <img x-show="sidebarExpanded" src="{{ asset('img/logo-claro.png') }}" alt="{{ \App\Services\ConfiguracionService::nombreNegocio() }}" class="logo-def-claro h-12 w-auto object-contain">
+                <img x-show="sidebarExpanded" src="{{ asset('img/logo.png') }}" alt="" class="logo-def-oscuro h-12 w-auto object-contain">
+            @endif
             
             </a>
         </div>
@@ -149,6 +158,32 @@
             @canany(['PAGOS_PROVEEDORES','COMPRAS_REGISTRAR','COMPRAS_ANULAR'])
             <a href="{{ route('cuentas_pagar.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('cuentas_pagar.*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📒 Cuentas a pagar</a>
             @endcanany
+        </div>
+    </div>
+    @endcanany
+    @endmodulo
+
+    <!-- Contabilidad (solo edición completa) -->
+    @modulo('contabilidad')
+    @canany(['CONTABILIDAD_VER','CONTABILIDAD_GESTIONAR'])
+    <div x-data="{ openConta: {{ request()->is('contabilidad*') ? 'true' : 'false' }} }">
+        <button @click="openConta = !openConta" class="flex items-center justify-between w-full rounded-lg py-3 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
+            <div class="flex items-center gap-4">
+                <span class="text-lg">📚</span>
+                <span x-show="sidebarExpanded" class="whitespace-nowrap">Contabilidad</span>
+            </div>
+            <span x-show="sidebarExpanded" :class="openConta ? 'rotate-180' : ''" class="transition-transform duration-200 text-xs">▼</span>
+        </button>
+        <div x-show="openConta && sidebarExpanded" class="pl-8 mt-1 space-y-1" style="display: none;">
+            @can('CONTABILIDAD_VER')
+            <a href="{{ route('contabilidad.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('contabilidad.index') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📊 Panel contable</a>
+            <a href="{{ route('contabilidad.diario') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('contabilidad.diario') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📖 Libro diario</a>
+            <a href="{{ route('contabilidad.balance') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('contabilidad.balance', 'contabilidad.resultados', 'contabilidad.sumas', 'contabilidad.mayor') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">⚖️ Balances y mayor</a>
+            <a href="{{ route('contabilidad.iva', 'ventas') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('contabilidad.iva') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🧾 Libro IVA</a>
+            @endcan
+            @can('CONTABILIDAD_GESTIONAR')
+            <a href="{{ route('contabilidad.asiento.nuevo') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('contabilidad.asiento.*', 'contabilidad.mapeos', 'contabilidad.plan') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">✍️ Ajustes y mapeos</a>
+            @endcan
         </div>
     </div>
     @endcanany
@@ -290,13 +325,14 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                         </button>
                         
-                        <!-- Buscador -->
-                        <div class="hidden sm:block relative">
-                            <input type="text" placeholder="Comando de búsqueda o escritura..." class="w-80 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 py-2 pl-10 pr-12 text-sm text-gray-800 dark:text-gray-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-300">
+                        <!-- Buscador de pantallas (Ctrl+K o /) -->
+                        <div class="hidden sm:block relative" id="bg-caja">
+                            <input type="text" id="bg-input" autocomplete="off" placeholder="Buscar una pantalla (ventas, clientes, caja...)" aria-label="Buscar una pantalla del sistema" class="w-80 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 py-2 pl-10 pr-14 text-sm text-gray-800 dark:text-gray-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-300">
                             <span class="absolute left-3 top-2.5 text-gray-400">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                             </span>
-                            <span class="absolute right-3 top-2.5 bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs px-1.5 py-0.5 rounded">⌘K</span>
+                            <span class="absolute right-3 top-2.5 bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs px-1.5 py-0.5 rounded">Ctrl K</span>
+                            <div id="bg-res" role="listbox" hidden></div>
                         </div>
                     </div>
 
@@ -400,5 +436,79 @@
 
         </div>
     </div>
+<style>
+#bg-res{position:absolute;left:0;top:calc(100% + 6px);width:min(26rem,90vw);max-height:22rem;overflow-y:auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 20px 40px -12px rgba(0,0,0,.35);z-index:80;padding:6px}
+html.dark #bg-res{background:#1c2434;border-color:#2e3a47}
+#bg-res a{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:9px 12px;border-radius:8px;text-decoration:none;color:#1f2937;font-size:14px}
+html.dark #bg-res a{color:#e5e7eb}
+#bg-res a small{color:#9ca3af;font-size:12px;white-space:nowrap}
+#bg-res a.on,#bg-res a:hover{background:#eff6ff;color:#1d4ed8}
+html.dark #bg-res a.on,html.dark #bg-res a:hover{background:#24303f;color:#93c5fd}
+#bg-res .bg-vacio{padding:14px;text-align:center;color:#9ca3af;font-size:13px}
+</style>
+<script>
+(function () {
+    var inp = document.getElementById('bg-input'), res = document.getElementById('bg-res');
+    if (!inp || !res) return;
+    var norm = function (t) { return (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); };
+    var items = null, activo = -1, vista = [];
+    function texto(el) {
+        var c = el.cloneNode(true);
+        c.querySelectorAll('style,script,svg,img,template').forEach(function (n) { n.remove(); });
+        return c.textContent.replace(/[▼▲]/g, '').replace(/\s+/g, ' ').trim();
+    }
+    function cargar() {
+        if (items) return items;
+        var vistos = {}; items = [];
+        document.querySelectorAll('aside a[href]').forEach(function (a) {
+            var href = a.getAttribute('href'), txt = texto(a);
+            if (!href || href === '#' || href.indexOf('javascript') === 0 || !txt || vistos[href]) return;
+            vistos[href] = 1;
+            var grupo = '', cont = a.closest('div[x-data]');
+            if (cont) { var b = cont.querySelector('button'); if (b) grupo = texto(b); }
+            items.push({ href: href, txt: txt, grupo: grupo, n: norm(txt + ' ' + grupo) });
+        });
+        return items;
+    }
+    function pintar() {
+        res.innerHTML = '';
+        if (!vista.length) { res.innerHTML = '<div class="bg-vacio">No hay pantallas con ese nombre.</div>'; return; }
+        vista.forEach(function (it, i) {
+            var a = document.createElement('a'); a.href = it.href; a.setAttribute('role', 'option');
+            if (i === activo) a.className = 'on';
+            var t = document.createElement('span'); t.textContent = it.txt; a.appendChild(t);
+            if (it.grupo) { var g = document.createElement('small'); g.textContent = it.grupo; a.appendChild(g); }
+            res.appendChild(a);
+        });
+    }
+    function buscar() {
+        var q = norm(inp.value.trim()), lista = cargar();
+        var palabras = q.split(' ').filter(Boolean);
+        vista = lista.filter(function (it) { return palabras.every(function (p) { return it.n.indexOf(p) !== -1; }); }).slice(0, 12);
+        activo = vista.length ? 0 : -1;
+        res.hidden = false; pintar();
+    }
+    function cerrar() { res.hidden = true; activo = -1; }
+    inp.addEventListener('focus', buscar);
+    inp.addEventListener('input', buscar);
+    inp.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault(); if (!vista.length) return;
+            activo = (activo + (e.key === 'ArrowDown' ? 1 : -1) + vista.length) % vista.length; pintar();
+            var on = res.querySelector('a.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+            e.preventDefault(); if (vista[activo]) window.location.href = vista[activo].href;
+        } else if (e.key === 'Escape') { cerrar(); inp.blur(); }
+    });
+    document.addEventListener('keydown', function (e) {
+        var tag = (document.activeElement && document.activeElement.tagName) || '';
+        var escribiendo = /INPUT|TEXTAREA|SELECT/.test(tag) || (document.activeElement && document.activeElement.isContentEditable);
+        if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !escribiendo)) {
+            e.preventDefault(); inp.focus(); inp.select();
+        }
+    });
+    document.addEventListener('click', function (e) { if (!e.target.closest('#bg-caja')) cerrar(); });
+})();
+</script>
 </body>
 </html>

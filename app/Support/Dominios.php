@@ -50,6 +50,17 @@ class Dominios
         return $esquema.'://'.self::app().'/'.ltrim($ruta, '/');
     }
 
+    /** Dirección completa dentro de la página pública, p. ej. urlWeb('/#planes'). Sin dominios separados usa el dominio actual. */
+    public static function urlWeb(string $ruta = '/'): string
+    {
+        if (! self::separados()) {
+            return url($ruta);
+        }
+        $esquema = parse_url((string) config('app.url'), PHP_URL_SCHEME) ?: 'https';
+
+        return $esquema.'://'.self::web().'/'.ltrim($ruta, '/');
+    }
+
     private static function limpiar(string $v): string
     {
         $v = strtolower(trim($v));

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\AuditoriaService;
 use App\Services\ConfiguracionService as Cfg;
 use App\Services\LicenciaService;
+use App\Services\SaludService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,30 @@ class PanelController extends Controller
             'total' => count($lista),
             'licencia' => LicenciaService::estado(),
             'edicion' => Cfg::edicion(),
+            'salud' => SaludService::chequeos(),
+            'cifras' => $this->cifras(),
         ]);
+    }
+
+    /** Números rápidos del negocio. Cada uno se calcula por separado: si falta una tabla, solo ese queda en blanco. */
+    private function cifras(): array
+    {
+        $contar = function (callable $f) {
+            try {
+                return $f();
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+
+        return [
+            'usuarios' => $contar(fn () => DB::table('usuarios')->where('usu_activo', true)->count()),
+            'sucursales' => $contar(fn () => DB::table('sucursales')->where('suc_activa', true)->count()),
+            'cajas' => $contar(fn () => DB::table('cajas')->where('caj_activa', true)->count()),
+            'productos' => $contar(fn () => DB::table('productos')->count()),
+            'ventas_mes' => $contar(fn () => DB::table('ventas')->whereNull('vta_anulada_por')->where('vta_fecha', '>=', now()->startOfMonth())->count()),
+            'total_mes' => $contar(fn () => (float) DB::table('ventas')->whereNull('vta_anulada_por')->where('vta_fecha', '>=', now()->startOfMonth())->sum('vta_total')),
+        ];
     }
 
     // ------------------------------------------------------------------ negocio
@@ -137,7 +161,14 @@ class PanelController extends Controller
     {
         $faltan = array_values(array_filter(self::TABLAS, fn ($t) => ! Schema::hasTable($t)));
 
-        return view('vendedor.herramientas', ['faltan' => $faltan, 'salida' => session('salida')]);
+        $hayAdmin = false;
+        try {
+            $hayAdmin = DB::table('usuarios')->join('roles', 'roles.rol_id', '=', 'usuarios.rol_id')
+                ->whereRaw('LOWER(roles.rol_nombre) = ?', ['administrador'])->where('usuarios.usu_activo', true)->exists();
+        } catch (\Throwable) {
+        }
+
+        return view('vendedor.herramientas', ['faltan' => $faltan, 'salida' => session('salida'), 'hayAdmin' => $hayAdmin]);
     }
 
     public function prepararBase()

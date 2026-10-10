@@ -6,8 +6,8 @@
     $clases = ['SIN_LICENCIA' => ['b-mu', 'Sin licencia'], 'ACTIVA' => ['b-ok', 'Al día'], 'POR_VENCER' => ['b-warn', 'Por vencer'], 'GRACIA' => ['b-warn', 'En gracia'], 'SOLO_LECTURA' => ['b-bad', 'Solo lectura']];
     [$cl, $tx] = $clases[$estado['estado']];
 @endphp
-<h1>Licencia y pagos</h1>
-<p class="pv-sub">Si el negocio no paga: aviso antes de vencer, {{ $graciaDias }} días de gracia y después solo lectura (puede consultar todo, no registrar). Nunca se pierden datos.</p>
+<div class="pv-head"><div><h1>Licencia y pagos</h1>
+<p class="pv-sub">Si el negocio no paga: aviso antes de vencer, {{ $graciaDias }} días de gracia y después solo lectura (puede consultar todo, no registrar). Nunca se pierden datos.</p></div></div>
 
 <div class="pv-card">
     <h2>Estado: <span class="badge {{ $cl }}">{{ $tx }}</span></h2>
@@ -20,7 +20,17 @@
     @if($estado['mensaje'])<div class="mu" style="margin-top:6px">Mensaje que ve el negocio: «{{ $estado['mensaje'] }}»</div>@endif
 </div>
 
-<div class="pv-grid" style="align-items:start">
+<div class="pv-card">
+    <h2>Aviso de cobro</h2>
+    <p class="mu" style="margin-top:-6px">Mensaje listo para avisarle al negocio según el estado de su licencia. Se manda al correo y al teléfono que cargaste en «Datos del negocio».</p>
+    <div class="al" style="background:var(--soft);border:1px solid var(--bd);font-weight:500">{{ $aviso['texto'] }}</div>
+    <div class="acciones">
+        <form method="POST" action="{{ route('vendedor.licencia.aviso') }}">@csrf<button class="btn" @disabled(! $aviso['email'])>Enviar por correo @if($aviso['email'])({{ $aviso['email'] }})@endif</button></form>
+        @if($aviso['wa'])<a class="btn g" href="{{ $aviso['wa'] }}" target="_blank" rel="noopener">Abrir en WhatsApp</a>@else<span class="mu" style="align-self:center">Sin teléfono cargado para WhatsApp.</span>@endif
+    </div>
+</div>
+
+<div class="pv-2" style="margin-bottom:18px">
     <form method="POST" action="{{ route('vendedor.licencia.plan') }}" class="pv-card">
         @csrf
         <h2>Asignar plan</h2>
@@ -70,7 +80,8 @@
                 <td>{{ $pg->lpa_forma }}<div class="mu">{{ $pg->lpa_referencia }}</div></td>
                 <td>{{ $pg->lpa_hasta ? ($pg->lpa_desde ? $pg->lpa_desde->format('d/m/Y').' → ' : '').$pg->lpa_hasta->format('d/m/Y') : 'Pago único' }}</td>
                 <td><span class="badge {{ $pg->lpa_estado === 'ACTIVO' ? 'b-ok' : 'b-bad' }}">{{ $pg->lpa_estado === 'ACTIVO' ? 'Activo' : 'Anulado' }}</span>@if($pg->lpa_motivo_anulacion)<div class="mu">{{ $pg->lpa_motivo_anulacion }}</div>@endif</td>
-                <td class="r">@if($pg->lpa_id === (int) $ultimoActivo)
+                <td class="r"><a class="btn g sm" href="{{ route('vendedor.licencia.recibo', $pg->lpa_id) }}" target="_blank">Recibo</a>
+                    @if($pg->lpa_id === (int) $ultimoActivo)
                     <form method="POST" action="{{ route('vendedor.licencia.pagos.anular', $pg->lpa_id) }}" style="display:flex;gap:6px" onsubmit="return confirm('¿Anular este pago y devolver el vencimiento anterior?')">@csrf
                         <input class="in" name="motivo" placeholder="Motivo" required maxlength="200" style="width:150px"><button class="btn r sm">Anular</button></form>@endif</td></tr>
         @empty<tr><td colspan="7" class="mu">Todavía no hay pagos registrados.</td></tr>@endforelse

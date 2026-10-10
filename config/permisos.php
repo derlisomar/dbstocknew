@@ -49,6 +49,8 @@ return [
         'COMPRAS_ANULAR'      => ['modulo' => 'COMPRAS',       'descripcion' => 'Anular compras y devolver mercadería al proveedor'],
         'PAGOS_PROVEEDORES'   => ['modulo' => 'COMPRAS',       'descripcion' => 'Ver cuentas a pagar y registrar o anular pagos a proveedores'],
         'PRESUPUESTOS_GESTIONAR' => ['modulo' => 'VENTAS',     'descripcion' => 'Crear, editar, aceptar, rechazar y renovar presupuestos (quien vende en caja puede verlos y convertirlos en venta)'],
+        'CONTABILIDAD_VER'    => ['modulo' => 'CONTABILIDAD',  'descripcion' => 'Ver libro diario, mayor, balances y libro IVA'],
+        'CONTABILIDAD_GESTIONAR' => ['modulo' => 'CONTABILIDAD', 'descripcion' => 'Plan de cuentas, mapeos, asientos manuales de ajuste y cierre de períodos'],
         'REPORTES_VER'        => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes (rentabilidad / curva ABC)'],
     ],
 

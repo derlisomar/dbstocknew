@@ -53,6 +53,7 @@ function compraForm(productos, previos, tipoInicial) {
                     </select></div>
                 <div><label class="p5-label">Fecha</label><input type="date" name="fecha" value="{{ old('fecha', now()->toDateString()) }}" max="{{ now()->toDateString() }}" class="p5-in"></div>
                 <div><label class="p5-label">Nº de factura / remisión</label><input type="text" name="nro_documento" value="{{ old('nro_documento') }}" maxlength="40" class="p5-in"></div>
+                <div><label class="p5-label">Timbrado del proveedor</label><input type="text" name="timbrado" value="{{ old('timbrado') }}" maxlength="20" class="p5-in" placeholder="Opcional (libro IVA)"></div>
                 <div><label class="p5-label">Condición *</label>
                     <select name="tipo" x-model="tipo" class="p5-in" required>
                         <option value="CREDITO">A crédito (queda deuda)</option>
