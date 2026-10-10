@@ -18,7 +18,9 @@ use App\Http\Controllers\IngresoEgresoController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\OperacionesClienteController;
 use App\Http\Controllers\OperacionesController;
+use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\PdvController;
+use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\PromocionController;
 use App\Http\Controllers\ProveedorController;
@@ -33,9 +35,8 @@ use App\Http\Controllers\Vendedor\PanelController as VendedorPanel;
 use Illuminate\Support\Facades\Route;
 
 // Página de bienvenida e inicio
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [\App\Http\Controllers\LandingController::class, 'index'])->name('inicio');
+Route::post('/demo', [\App\Http\Controllers\LandingController::class, 'demo'])->middleware('throttle:demo')->name('demo.solicitar');
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +47,14 @@ Route::get('/', function () {
 |              (tabla permisos / rol_permisos; se asignan en "Gestión de Roles").
 |              Los roles de config/permisos.php (Administrador) pasan siempre.
 */
+// Perfil propio: solo hace falta haber iniciado sesión (también se puede cambiar la clave con el plan en solo lectura).
+Route::middleware('auth')->group(function () {
+    Route::get('/perfil', [PerfilController::class, 'edit'])->name('perfil.edit');
+    Route::put('/perfil', [PerfilController::class, 'actualizar'])->name('perfil.actualizar');
+    Route::put('/perfil/clave', [PerfilController::class, 'clave'])->name('perfil.clave');
+    Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
+});
+
 Route::middleware(['auth', 'licencia'])->group(function () {
 
     // Inicio: lo ve cualquier usuario con sesión (es a donde llega tras el login)

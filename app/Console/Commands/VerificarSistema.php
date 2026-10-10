@@ -71,6 +71,17 @@ class VerificarSistema extends Command
             $this->anotar($seguro ? 'OK' : 'AVISO', 'Cookie de sesión solo por HTTPS', $seguro ? '' : 'Poné SESSION_SECURE_COOKIE=true en .env');
         }
 
+        if (config('landing.demo_activa')) {
+            $mailer = (string) config('mail.default');
+            $real = ! in_array($mailer, ['log', 'array'], true);
+            $this->anotar($real ? 'OK' : 'AVISO', 'Correo real para las demos (MAIL_MAILER)', $real ? 'Mailer: '.$mailer : 'Con "'.$mailer.'" los accesos de la demo NO le llegan a nadie. Configurá SMTP en el .env.');
+            if ($real) {
+                $desde = (string) config('mail.from.address');
+                $ok = $desde !== '' && ! str_contains($desde, 'example.com');
+                $this->anotar($ok ? 'OK' : 'AVISO', 'Remitente de los correos (MAIL_FROM_ADDRESS)', $ok ? $desde : 'Sigue con el valor de ejemplo: poné tu casilla (por ejemplo info@tudominio.com) o los correos pueden rebotar.');
+            }
+        }
+
         $cache = app()->configurationIsCached();
         $this->anotar($cache ? 'OK' : 'AVISO', 'Configuración en caché', $cache ? '' : 'Ejecutá: php artisan config:cache');
     }

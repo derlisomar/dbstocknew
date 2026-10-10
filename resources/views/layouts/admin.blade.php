@@ -309,12 +309,34 @@
                             <span x-show="darkMode" style="display: none;">☀️</span>
                         </button>
 
-                        <!-- Notificaciones -->
-                        <div class="relative">
-                            <span class="absolute top-0 right-0 z-1 h-2 w-2 rounded-full bg-red-500"></span>
-                            <button class="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white shadow-sm">
+                        <!-- Notificaciones (avisos reales: stock, deudas, presupuestos, plan) -->
+                        <div class="relative" x-data="{
+                                open: false, total: 0, items: [], cargado: false,
+                                cargar() { fetch('{{ route('notificaciones.index') }}', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                                    .then(r => r.ok ? r.json() : { total: 0, items: [] })
+                                    .then(d => { this.total = d.total; this.items = d.items; this.cargado = true; })
+                                    .catch(() => { this.cargado = true; }); }
+                             }" x-init="cargar()">
+                            <span x-show="total > 0" style="display: none;" class="absolute top-0 right-0 z-1 h-2 w-2 rounded-full bg-red-500"></span>
+                            <button @click="open = !open; if (open) cargar()" @click.away="open = false" class="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white shadow-sm" aria-label="Notificaciones">
                                 🔔
                             </button>
+                            <div x-show="open" x-transition style="display: none; width: 340px; max-width: calc(100vw - 24px);" class="absolute right-0 mt-3.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1c2434] shadow-xl z-50">
+                                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+                                    <p class="text-sm font-bold text-gray-800 dark:text-white">Notificaciones</p>
+                                </div>
+                                <div style="max-height: 380px; overflow-y: auto;">
+                                    <template x-if="cargado && items.length === 0">
+                                        <p class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400" style="text-align:center">Todo en orden. No hay avisos por ahora.</p>
+                                    </template>
+                                    <template x-for="n in items" :key="n.titulo">
+                                        <a :href="n.url" :style="n.url ? '' : 'cursor: default'" class="block px-4 py-3 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                                            <p class="text-sm font-semibold text-gray-800 dark:text-white" x-text="(n.nivel === 'critico' ? '🔴 ' : (n.nivel === 'aviso' ? '🟡 ' : '🔵 ')) + n.titulo"></p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5" x-text="n.detalle"></p>
+                                        </a>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Perfil de Usuario con Menú Desplegable -->
@@ -322,7 +344,7 @@
                             <button @click="profileOpen = !profileOpen" @click.away="profileOpen = false" class="flex items-center gap-3 focus:outline-none">
                                 <div class="text-right hidden lg:block">
                                     <span class="block text-sm font-medium text-gray-800 dark:text-white">{{ Auth::user()->usu_nombre }}</span>
-                                    <span class="block text-xs text-gray-500 dark:text-gray-400">Usuario Activo</span>
+                                    <span class="block text-xs text-gray-500 dark:text-gray-400">{{ Auth::user()->rol?->rol_nombre ?? 'Usuario' }}</span>
                                 </div>
                                 <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-md">
                                     {{ substr(Auth::user()->usu_nombre, 0, 1) }}
@@ -336,41 +358,21 @@
                                 <!-- Cabecera del Dropdown -->
                                 <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
                                     <p class="text-sm font-bold text-gray-800 dark:text-white">{{ Auth::user()->usu_nombre }} {{ Auth::user()->usu_apellido }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ Auth::user()->usu_usuario }}@dbstock.com</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ Auth::user()->usu_email ?: Auth::user()->usu_usuario }}</p>
                                 </div>
                                 
                                 <!-- Opciones -->
                                 <ul class="py-2 border-b border-gray-200 dark:border-gray-800">
-                                    <li><a href="#" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">👤 Editar perfil</a></li>
-                                    <li><a href="#" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">⚙️ Configuraciones de la cuenta</a></li>
-                                    <li><a href="#" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">ℹ️ Apoyo</a></li>
+                                    <li><a href="{{ route('perfil.edit') }}#datos" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">👤 Editar perfil</a></li>
+                                    <li><a href="{{ route('perfil.edit') }}#clave" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">⚙️ Configuraciones de la cuenta</a></li>
                                 </ul>
 
-                                <!-- Selector de Idiomas -->
-                                <div class="relative py-2 px-4" x-data="{ langOpen: false }">
-                                    <button @click="langOpen = !langOpen" @click.away="langOpen = false" class="flex items-center justify-between w-full text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition">
-                                        <div class="flex items-center gap-3">
-                                            🌐 Idioma
-                                        </div>
-                                        <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md text-xs">
-                                            Inglés 🇺🇸
-                                        </div>
-                                    </button>
-                                    
-                                    <!-- Submenú de idiomas -->
-                                    <div x-show="langOpen" x-transition style="display: none;" class="absolute right-full top-0 mr-2 w-40 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1c2434] shadow-lg py-2">
-                                        <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20">🇺🇸 Inglés</a>
-                                        <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">🇪🇸 Español</a>
-                                        <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">🇧🇷 Portugués</a>
-                                    </div>
-                                </div>
-                                
                                 <!-- Botón Desconectar -->
                                 <div class="p-4 border-t border-gray-200 dark:border-gray-800">
                                     <form method="POST" action="{{ route('logout') }}">
                                         @csrf
                                         <button type="submit" class="w-full rounded-md border border-gray-300 dark:border-gray-700 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                                            desconectar
+                                            Cerrar sesión
                                         </button>
                                     </form>
                                 </div>

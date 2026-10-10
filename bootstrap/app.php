@@ -16,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Alias para usar ->middleware('permiso:CODIGO') en las rutas
+        // Formulario público de demo: no hay sesión de usuario que proteger y la página puede venir de caché o de otro dominio.
+        // Lo cuidan el campo trampa, el límite por IP y el tope de demos.
+        $middleware->validateCsrfTokens(except: ['demo']);
+
+        $middleware->web(append: [\App\Http\Middleware\SepararDominios::class]);
+
         $middleware->alias([
             'permiso' => ExigirPermiso::class,
             'modulo' => ExigirModulo::class,

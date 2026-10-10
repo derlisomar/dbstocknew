@@ -13,3 +13,6 @@ Schedule::command('respaldo:base')
     ->dailyAt(config('respaldos.hora', '02:00'))
     ->withoutOverlapping()
     ->runInBackground();
+
+// Cierra las demos vencidas de la página pública (también se hace al llegar un pedido nuevo).
+Schedule::command('demo:limpiar')->dailyAt('03:00');

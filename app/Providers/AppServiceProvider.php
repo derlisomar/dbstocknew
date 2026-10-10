@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Models\User;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +26,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useTailwind();
+
+        // Pedidos de demo de la página pública: pocos por hora y por día desde la misma conexión.
+        RateLimiter::for('demo', fn ($request) => [
+            Limit::perHour(4)->by($request->ip()),
+            Limit::perDay(12)->by($request->ip()),
+        ]);
 
         // En las vistas:  @modulo('compras') ... @endmodulo  (según el plan del negocio)
         Blade::if('modulo', fn (string $clave) => \App\Services\ConfiguracionService::modulo($clave));

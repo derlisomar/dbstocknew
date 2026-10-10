@@ -1,6 +1,20 @@
 @extends('layouts.admin')
 
 @section('contenido')
+<style>
+/* Modo oscuro de la tabla (reglas propias: no dependen de que el CSS compilado incluya estas clases) */
+html.dark .cli-tabla{background:#1c2434;border-color:#1f2937}
+html.dark .cli-tabla thead tr{background:rgba(17,24,39,.55);border-color:#1f2937;color:#9ca3af}
+html.dark .cli-tabla tbody tr{border-color:#1f2937}
+html.dark .cli-tabla tbody tr:hover{background:rgba(31,41,55,.55)}
+html.dark .cli-tabla td{color:#d1d5db}
+html.dark .cli-tabla .text-blue-600{color:#60a5fa}
+html.dark .cli-tabla .text-gray-800{color:#f3f4f6}
+html.dark .cli-tabla .text-gray-500,html.dark .cli-tabla .text-gray-400{color:#9ca3af}
+html.dark .cli-tabla .bg-amber-100{background:rgba(120,53,15,.35)}
+html.dark .cli-tabla .text-amber-700{color:#fcd34d}
+html.dark .cli-pie{background:rgba(17,24,39,.55);border-color:#1f2937}
+</style>
 <div x-data="{ 
     search: '',
     openModal: false, 
@@ -75,12 +89,12 @@
 
 
  <!-- Contenedor de la Tabla -->
-    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+    <div class="cli-tabla bg-white dark:bg-[#1c2434] border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 
                 <thead>
-                    <tr class="bg-gray-50/50 border-b border-gray-200 text-[11px] uppercase font-bold text-gray-500 tracking-wider">
+                    <tr class="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800 text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400 tracking-wider">
                         <th class="py-4 px-6">Documento</th>
                         <th class="py-4 px-6">Cliente</th>
                         <th class="py-4 px-6">Contacto</th>
@@ -93,32 +107,32 @@
                     @forelse($clientes as $cliente)
                         <!-- Fila con Búsqueda Activa y Diseño Limpio -->
                         <tr x-show="search === '' || `{{ addslashes($cliente->cli_nombre . ' ' . $cliente->cli_apellido . ' ' . $cliente->cli_ruc_ci) }}`.toLowerCase().includes(search.toLowerCase())" 
-                            class="border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
+                            class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors last:border-0">
                             
                             <!-- Documento (Estilo ID) -->
-                            <td class="py-4 px-6 font-medium text-gray-700">{{ $cliente->cli_ruc_ci }}</td>
+                            <td class="py-4 px-6 font-medium text-gray-700 dark:text-gray-300">{{ $cliente->cli_ruc_ci }}</td>
                             
                             <!-- Cliente (Estilo Azul Destacado como en la imagen) -->
                             <td class="py-4 px-6">
-                                <span class="font-bold text-blue-600 block">{{ $cliente->cli_nombre }} {{$cliente->cli_apellido }}</span>
+                                <span class="font-bold text-blue-600 dark:text-blue-400 block">{{ $cliente->cli_nombre }} {{$cliente->cli_apellido }}</span>
                                 @if($cliente->cli_es_mayorista)
-                                    <span class="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded text-amber-700 bg-amber-100">⭐ Mayorista</span>
+                                    <span class="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/30">⭐ Mayorista</span>
                                 @endif
                             </td>
                             
                             <!-- Contacto (Texto Principal + Secundario) -->
-                            <td class="py-4 px-6 font-semibold text-gray-800">
+                            <td class="py-4 px-6 font-semibold text-gray-800 dark:text-gray-100">
                                 <span class="block">{{ $cliente->cli_telefono ?? '---' }}</span>
-                                <span class="text-xs text-gray-500 font-normal">{{ $cliente->cli_email }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">{{ $cliente->cli_email }}</span>
                             </td>
                             
                             <!-- Condición (Texto normal) -->
-                            <td class="py-4 px-6 text-gray-600">
+                            <td class="py-4 px-6 text-gray-600 dark:text-gray-300">
                                 @if($cliente->cli_limite_credito > 0)
-                                    <span class="font-bold text-gray-800 block">Gs. {{ number_format($cliente->cli_limite_credito, 0, ',', '.') }}</span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-100 block">Gs. {{ number_format($cliente->cli_limite_credito, 0, ',', '.') }}</span>
                                     <span class="text-[10px] font-bold text-gray-400 uppercase">Límite Crédito</span>
                                 @else
-                                    <span class="text-gray-500">Solo Contado</span>
+                                    <span class="text-gray-500 dark:text-gray-400">Solo Contado</span>
                                 @endif
                             </td>
                             
@@ -142,14 +156,14 @@
                             
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="py-12 text-center text-gray-500">No hay clientes registrados en el sistema.</td></tr>
+                        <tr><td colspan="5" class="py-12 text-center text-gray-500 dark:text-gray-400">No hay clientes registrados en el sistema.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         
         <!-- Paginación -->
-        <div class="p-4 border-t border-gray-100 bg-gray-50/50">
+        <div class="cli-pie p-4 border-t border-gray-100 bg-gray-50/50">
             {{ $clientes->links() }}
         </div>
     </div>
