@@ -42,6 +42,9 @@ trait EsquemaTest
 
         $migracion11 = require database_path('migrations/2026_10_17_000001_parte11_planes_publicos.php');
         $migracion11->up();
+
+        $migracion13 = require database_path('migrations/2026_10_20_000001_parte13_demo_detalle.php');
+        $migracion13->up();
     }
 
     /** En PostgreSQL, tras insertar ids a mano hay que avanzar las secuencias (SQLite no lo necesita). */

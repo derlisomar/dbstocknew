@@ -89,6 +89,14 @@
         <span class="inline-block px-2.5 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[11px] font-bold rounded-lg border border-blue-200 dark:border-blue-800">
             🧾 FACTURA
         </span>
+    @elseif($caja->caj_tipo_impresion === 'MATRICIAL_FACTURA')
+        <span class="inline-block px-2.5 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[11px] font-bold rounded-lg border border-blue-200 dark:border-blue-800">
+            🖨️ MATRICIAL FACTURA
+        </span>
+    @elseif($caja->caj_tipo_impresion === 'MATRICIAL_SIMPLE')
+        <span class="inline-block px-2.5 py-1 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 text-[11px] font-bold rounded-lg border border-gray-200 dark:border-gray-700">
+            🖨️ MATRICIAL COMÚN
+        </span>
     @else
         <span class="inline-block px-2.5 py-1 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 text-[11px] font-bold rounded-lg border border-gray-200 dark:border-gray-700">
             🎫 TICKET COMÚN
@@ -169,6 +177,8 @@
                     <select name="caj_tipo_impresion" x-model="caj_tipo_impresion" class="w-full rounded-xl bg-transparent border border-gray-300 dark:border-gray-700 py-2.5 px-3 text-gray-800 dark:text-white outline-none focus:border-blue-500">
                         <option value="TICKET_SIMPLE">🎫 Ticket Común (Sin valor fiscal)</option>
                         <option value="TICKET_FACTURA">🧾 Ticket Factura (Con datos fiscales)</option>
+                        <option value="MATRICIAL_SIMPLE">🖨️ Matricial Común (Sin valor fiscal)</option>
+                        <option value="MATRICIAL_FACTURA">🖨️ Matricial Factura (Con datos fiscales)</option>
                     </select>
                 </div>
 

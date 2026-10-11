@@ -11,7 +11,7 @@ class DemoSolicitud extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'dem_nombre', 'dem_negocio', 'dem_email', 'dem_telefono', 'usu_id', 'dem_ip', 'dem_estado', 'dem_creada', 'dem_vence',
+        'dem_nombre', 'dem_negocio', 'dem_email', 'dem_telefono', 'usu_id', 'dem_ip', 'dem_estado', 'dem_creada', 'dem_vence', 'dem_detalle',
     ];
 
     protected $casts = [

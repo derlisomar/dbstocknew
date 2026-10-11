@@ -38,7 +38,7 @@
         <tbody>
         @forelse($cajas as $c)
             <tr><td><b>{{ $c->caj_nombre }}</b></td><td>{{ optional($sucursales->firstWhere('suc_id', $c->suc_id))->suc_nombre ?? '—' }}</td>
-                <td>{{ $c->caj_tipo_impresion === 'TICKET_FACTURA' ? 'Factura' : 'Ticket simple' }}</td><td>{{ $c->caj_impresora ?? '—' }}</td>
+                <td>{{ \App\Support\TipoImpresion::nombre($c->caj_tipo_impresion) }}</td><td>{{ $c->caj_impresora ?? '—' }}</td>
                 <td><span class="badge {{ $c->caj_activa ? 'b-ok' : 'b-mu' }}">{{ $c->caj_activa ? 'Activa' : 'Inactiva' }}</span></td>
                 <td class="r"><form method="POST" action="{{ route('vendedor.cajas.estado', $c->caj_id) }}">@csrf<button class="btn g sm">{{ $c->caj_activa ? 'Desactivar' : 'Activar' }}</button></form></td></tr>
         @empty<tr><td colspan="6" class="mu">Todavía no hay cajas.</td></tr>@endforelse
@@ -48,7 +48,7 @@
         <div class="pv-grid">
             <div><label class="l">Sucursal *</label><select class="in" name="suc_id" required><option value="">Elegí</option>@foreach($sucursales as $s)<option value="{{ $s->suc_id }}">{{ $s->suc_nombre }}</option>@endforeach</select></div>
             <div><label class="l">Nombre de la caja *</label><input class="in" name="caj_nombre" required maxlength="50" placeholder="Caja 1"></div>
-            <div><label class="l">Comprobante</label><select class="in" name="caj_tipo_impresion"><option value="TICKET_SIMPLE">Ticket simple</option><option value="TICKET_FACTURA">Factura</option></select></div>
+            <div><label class="l">Comprobante</label><select class="in" name="caj_tipo_impresion">@foreach(\App\Support\TipoImpresion::nombres() as $cod => $nom)<option value="{{ $cod }}">{{ $nom }}</option>@endforeach</select></div>
             <div><label class="l">Impresora</label><input class="in" name="caj_impresora" maxlength="100"></div>
         </div>
         <div style="margin-top:12px"><button class="btn ok">+ Crear caja</button></div>

@@ -61,7 +61,7 @@ class EstructuraController extends Controller
         $d = $request->validate([
             'suc_id' => ['required', 'integer', 'exists:sucursales,suc_id'],
             'caj_nombre' => ['required', 'string', 'max:50'],
-            'caj_tipo_impresion' => ['required', 'in:TICKET_SIMPLE,TICKET_FACTURA'],
+            'caj_tipo_impresion' => ['required', \Illuminate\Validation\Rule::in(\App\Support\TipoImpresion::codigos())],
             'caj_impresora' => ['nullable', 'string', 'max:100'],
         ], ['caj_nombre.required' => 'Escribí el nombre de la caja.', 'suc_id.required' => 'Elegí la sucursal de la caja.']);
 

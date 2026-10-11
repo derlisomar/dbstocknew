@@ -75,6 +75,35 @@ class ExtrasController extends Controller
         return view('vendedor.demos', ['filas' => $filas, 'conteo' => $conteo, 'hay' => $hay]);
     }
 
+    /** Vuelve a mandar el acceso de una demo cuyo correo había fallado. */
+    public function reintentarDemo(Request $request, \App\Services\DemoService $demos, $id)
+    {
+        try {
+            $demos->reintentar((int) $id, $request->ip());
+        } catch (\App\Exceptions\NegocioException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Sigue sin poder enviarse el correo. Usá «Probar correo» en Herramientas para ver el motivo.');
+        }
+
+        AuditoriaService::registrar('VENDEDOR_DEMO_REINTENTO', 'demo_solicitudes', (int) $id, ['por' => 'vendedor']);
+
+        return back()->with('success', 'Listo: se creó la demo y se envió el acceso por correo.');
+    }
+
+    /** Manda un correo de prueba para revisar la configuración del correo. */
+    public function probarCorreo(Request $request)
+    {
+        $d = $request->validate(['destino' => ['required', 'email', 'max:150']], ['destino.required' => 'Escribí el correo al que querés mandar la prueba.', 'destino.email' => 'Revisá el correo, parece incompleto.']);
+
+        $r = \App\Services\CorreoPrueba::enviar($d['destino']);
+        $detalle = collect($r['config'])->map(fn ($v, $k) => "{$k} = {$v}")->implode("\n");
+
+        return back()->with($r['ok'] ? 'success' : 'error', $r['mensaje'])->with('salida', $detalle);
+    }
+
     // ------------------------------------------------------------------ recibo de pago
 
     public function recibo($id)

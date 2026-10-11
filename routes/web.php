@@ -153,6 +153,8 @@ Route::middleware(['auth', 'licencia'])->group(function () {
         Route::post('/pdv/cliente-ajax', [PdvController::class, 'storeClienteAjax'])->name('pdv.cliente.ajax');
         Route::get('/pdv/ticket-simple/{id}', [PdvController::class, 'ticketSimple']);
         Route::get('/pdv/ticket-factura/{id}', [PdvController::class, 'ticketFactura']);
+        Route::get('/pdv/matricial-simple/{id}', [PdvController::class, 'matricialSimple'])->whereNumber('id');
+        Route::get('/pdv/matricial-factura/{id}', [PdvController::class, 'matricialFactura'])->whereNumber('id');
     });
 
     // ---------------------------------------------------------------- Cobranzas
@@ -295,6 +297,8 @@ Route::prefix(config('vendedor.ruta', 'panel-vendedor'))->name('vendedor.')->gro
         Route::get('/licencia/pagos/{id}/recibo', [VendedorExtras::class, 'recibo'])->whereNumber('id')->name('licencia.recibo');
         Route::post('/licencia/aviso', [VendedorExtras::class, 'enviarAviso'])->name('licencia.aviso');
         Route::post('/herramientas/instalar', [VendedorExtras::class, 'instalar'])->name('herramientas.instalar');
+        Route::post('/herramientas/correo', [VendedorExtras::class, 'probarCorreo'])->name('herramientas.correo');
+        Route::post('/demos/{id}/reintentar', [VendedorExtras::class, 'reintentarDemo'])->whereNumber('id')->name('demos.reintentar');
 
         Route::get('/licencia', [VendedorLicencia::class, 'licencia'])->name('licencia');
         Route::post('/licencia/plan', [VendedorLicencia::class, 'aplicarPlan'])->name('licencia.plan');

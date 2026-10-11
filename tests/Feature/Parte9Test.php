@@ -96,7 +96,8 @@ class Parte9Test extends TestCase
         $this->postJson('/demo', $this->datos())->assertStatus(500)->assertJsonPath('ok', false);
 
         $this->assertSame(0, User::where('usu_email', 'marta@ferre.com')->count());
-        $this->assertSame(0, DemoSolicitud::count());
+        // El pedido queda anotado como FALLIDA para que el dueño lo vea y pueda reintentar.
+        $this->assertSame(['FALLIDA'], DemoSolicitud::pluck('dem_estado')->all());
     }
 
     public function test_pedir_dos_veces_con_el_mismo_correo_no_crea_otro_usuario(): void
@@ -118,7 +119,7 @@ class Parte9Test extends TestCase
         $this->postJson('/demo', $this->datos(['email' => 'jefe@x.com']))->assertOk()->assertJson(['ok' => true]);
 
         Mail::assertNothingSent();
-        $this->assertSame(0, DemoSolicitud::count());
+        $this->assertSame(['REPETIDA'], DemoSolicitud::pluck('dem_estado')->all());
     }
 
     public function test_campo_trampa_de_robots_responde_bien_pero_no_crea_nada(): void

@@ -548,10 +548,15 @@
                 .then(data => {
                     if (data.success) {
                         if (data.venta_id) {
-                            let rutaTicket = (data.tipo_impresion === 'TICKET_FACTURA') 
-                                ? '/pdv/ticket-factura/' + data.venta_id 
-                                : '/pdv/ticket-simple/' + data.venta_id;
-                            window.open(rutaTicket, 'Ticket', 'width=400,height=600');
+                            const rutas = {
+                                TICKET_FACTURA: '/pdv/ticket-factura/',
+                                MATRICIAL_SIMPLE: '/pdv/matricial-simple/',
+                                MATRICIAL_FACTURA: '/pdv/matricial-factura/'
+                            };
+                            let rutaTicket = (rutas[data.tipo_impresion] || '/pdv/ticket-simple/') + data.venta_id;
+                            // La hoja matricial es más ancha (80 columnas) que el ticket de 72 mm.
+                            let medidas = (data.tipo_impresion || '').indexOf('MATRICIAL') === 0 ? 'width=900,height=700' : 'width=400,height=600';
+                            window.open(rutaTicket, 'Ticket', medidas);
                         }
                         Swal.fire({
                             title: '¡Venta Exitosa!',

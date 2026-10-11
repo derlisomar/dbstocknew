@@ -36,6 +36,15 @@
 </div>
 
 <div class="pv-card">
+    <h2>Probar correo</h2>
+    <p class="mu">Manda un correo de prueba con la configuración actual. Sirve para revisar que las demos de la página pública (y los avisos de cobro) lleguen de verdad. Si falla, te muestra el motivo.</p>
+    <form method="POST" action="{{ route('vendedor.herramientas.correo') }}">@csrf
+        <div class="pv-grid"><div><label class="l">Enviar la prueba a *</label><input class="in" type="email" name="destino" value="{{ old('destino') }}" required maxlength="150" placeholder="tucorreo@ejemplo.com"></div></div>
+        <div style="margin-top:12px"><button class="btn">Enviar correo de prueba</button></div>
+    </form>
+</div>
+
+<div class="pv-card">
     <h2>Limpiar caché</h2>
     <p class="mu">Úsalo después de cambiar el archivo .env o de copiar archivos nuevos.</p>
     <form method="POST" action="{{ route('vendedor.herramientas.cache') }}">@csrf<button class="btn g">Limpiar caché</button></form>

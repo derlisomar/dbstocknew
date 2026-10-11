@@ -219,7 +219,7 @@ class PdvController extends Controller
                 $nroFactura = null;
                 $timbrado = null;
 
-                if ($cajaFisica->caj_tipo_impresion === 'TICKET_FACTURA') {
+                if (\App\Support\TipoImpresion::esFactura($cajaFisica->caj_tipo_impresion)) {
                     if (! $sucursal || ! $sucursal->suc_timbrado) {
                         throw new NegocioException('La sucursal no tiene un timbrado cargado. Avisá al administrador.');
                     }
@@ -397,6 +397,25 @@ class PdvController extends Controller
         $venta = $this->ventaVisible($request, $id);
 
         return view('pdv.ticket-factura', compact('venta'));
+    }
+
+    /** Comprobante común (sin valor fiscal) para la impresora matricial. */
+    public function matricialSimple(Request $request, $id)
+    {
+        return $this->hojaMatricial($this->ventaVisible($request, $id), false);
+    }
+
+    /** Factura (con timbrado y liquidación de IVA) para la impresora matricial. */
+    public function matricialFactura(Request $request, $id)
+    {
+        return $this->hojaMatricial($this->ventaVisible($request, $id), true);
+    }
+
+    private function hojaMatricial(Venta $venta, bool $factura)
+    {
+        $lineas = \App\Services\ComprobanteMatricial::lineas($venta, $factura);
+
+        return view('pdv.matricial', compact('venta', 'factura', 'lineas'));
     }
 
     /**

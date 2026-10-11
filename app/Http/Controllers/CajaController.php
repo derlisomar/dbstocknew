@@ -26,7 +26,7 @@ class CajaController extends Controller
         'suc_id' => 'required|exists:sucursales,suc_id',
         'caj_nombre' => 'required|string|max:50',
         'caj_impresora' => 'nullable|string|max:100',
-        'caj_tipo_impresion' => 'nullable|string|max:30', // 👇 NUEVA LÍNEA DE VALIDACIÓN
+        'caj_tipo_impresion' => ['nullable', \Illuminate\Validation\Rule::in(\App\Support\TipoImpresion::codigos())],
     ]);
 
     Caja::create([
@@ -48,7 +48,7 @@ public function update(Request $request, $id)
         'suc_id' => 'required|exists:sucursales,suc_id',
         'caj_nombre' => 'required|string|max:50',
         'caj_impresora' => 'nullable|string|max:100',
-        'caj_tipo_impresion' => 'nullable|string|max:30', // 👇 NUEVA LÍNEA DE VALIDACIÓN
+        'caj_tipo_impresion' => ['nullable', \Illuminate\Validation\Rule::in(\App\Support\TipoImpresion::codigos())],
     ]);
 
     $caja->update([

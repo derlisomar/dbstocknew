@@ -188,8 +188,16 @@ public function historialVentas(Request $request)
         ]);
 
         $copia = true;
+        $factura = (bool) $venta->vta_nro_factura;
 
-        return view($venta->vta_nro_factura ? 'pdv.ticket-factura' : 'pdv.ticket-simple', compact('venta', 'copia'));
+        // Se reimprime en el mismo formato que usa la caja donde se hizo la venta (ticket o matricial).
+        if (\App\Support\TipoImpresion::esMatricial($venta->sesion?->caja?->caj_tipo_impresion)) {
+            $lineas = \App\Services\ComprobanteMatricial::lineas($venta, $factura, true);
+
+            return view('pdv.matricial', compact('venta', 'factura', 'lineas'));
+        }
+
+        return view($factura ? 'pdv.ticket-factura' : 'pdv.ticket-simple', compact('venta', 'copia'));
     }
 
     public function procesarDevolucion(Request $request, $id, VentaService $ventas)
