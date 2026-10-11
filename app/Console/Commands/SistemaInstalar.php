@@ -40,6 +40,11 @@ class SistemaInstalar extends Command
         $rol = Rol::firstOrCreate(['rol_nombre' => $nombreAdmin], ['rol_descripcion' => 'Acceso total al sistema']);
         $this->info("Rol «{$nombreAdmin}» listo.");
 
+        $roles = \App\Services\RolesBase::preparar(false);
+        if ($roles['creados']) {
+            $this->info('Roles listos para usar: '.implode(', ', $roles['creados']).'.');
+        }
+
         $this->crearAdministrador($rol);
         $suc = $this->base();
 

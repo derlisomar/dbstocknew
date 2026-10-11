@@ -54,4 +54,39 @@ return [
         'REPORTES_VER'        => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes (rentabilidad / curva ABC)'],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Roles listos para usar
+    |--------------------------------------------------------------------------
+    | Se crean con:  php artisan roles:preparar   (también lo hace php artisan migrate y sistema:instalar).
+    | Solo se crean los que faltan: un rol que ya existe con ese nombre no se toca.
+    | Después se pueden ajustar permiso por permiso desde "Gestión de Roles".
+    | El Administrador no está acá: tiene acceso total por su nombre (ver 'roles_admin').
+    |
+    |   'permisos'     => lista exacta de códigos del catálogo
+    |   'todos_menos'  => todos los del catálogo salvo estos
+    */
+    'roles_base' => [
+        'Gerente' => [
+            'descripcion' => 'Supervisa todo el negocio: ventas, caja, compras, reportes y auditoría. No administra usuarios ni configuración.',
+            'todos_menos' => ['USUARIOS_GESTIONAR', 'CONFIG_GESTIONAR', 'CONTABILIDAD_GESTIONAR'],
+        ],
+        'Cajero' => [
+            'descripcion' => 'Vende y cobra en el punto de venta, abre y cierra su caja y cobra cuentas a crédito.',
+            'permisos' => ['PDV_USAR', 'CAJA_ABRIR_CERRAR', 'CAJA_INGRESO_EGRESO', 'COBRANZAS_REGISTRAR', 'CLIENTES_GESTIONAR', 'PRESUPUESTOS_GESTIONAR', 'VENTAS_HISTORIAL'],
+        ],
+        'Vendedor' => [
+            'descripcion' => 'Atiende clientes y arma presupuestos. No maneja dinero: el cajero los convierte en venta y cobra.',
+            'permisos' => ['PRESUPUESTOS_GESTIONAR', 'CLIENTES_GESTIONAR'],
+        ],
+        'Encargado de stock' => [
+            'descripcion' => 'Carga productos, recibe mercadería, registra compras y ajusta el stock.',
+            'permisos' => ['CATALOGO_GESTIONAR', 'STOCK_AJUSTAR', 'COMPRAS_REGISTRAR'],
+        ],
+        'Contador' => [
+            'descripcion' => 'Contabilidad, libro IVA y reportes. Ve las ventas y la caja, pero no vende ni cobra.',
+            'permisos' => ['CONTABILIDAD_VER', 'CONTABILIDAD_GESTIONAR', 'REPORTES_VER', 'FINANZAS_VER', 'VENTAS_HISTORIAL', 'AUDITORIA_VER'],
+        ],
+    ],
+
 ];
