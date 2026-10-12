@@ -77,16 +77,16 @@ return [
     */
     'roles_base' => [
         'Gerente' => [
-            'descripcion' => 'Supervisa todo el negocio: ventas, caja, compras, reportes y auditoría. No administra usuarios ni configuración.',
-            'todos_menos' => ['USUARIOS_GESTIONAR', 'CONFIG_GESTIONAR', 'CONTABILIDAD_GESTIONAR'],
+            'descripcion' => 'Supervisa todo el negocio: ventas, caja, compras, reportes y auditoría. Puede anular y devolver. No administra usuarios ni configuración y no entra a contabilidad.',
+            'todos_menos' => ['USUARIOS_GESTIONAR', 'CONFIG_GESTIONAR', 'CONTABILIDAD_GESTIONAR', 'CONTABILIDAD_VER'],
         ],
         'Cajero' => [
-            'descripcion' => 'Vende y cobra en el punto de venta, abre y cierra su caja y cobra cuentas a crédito.',
+            'descripcion' => 'Responsable del efectivo: todo lo del vendedor más historial de ventas e ingresos/egresos extra de caja. No anula ni devuelve.',
             'permisos' => ['PDV_USAR', 'CAJA_ABRIR_CERRAR', 'CAJA_INGRESO_EGRESO', 'COBRANZAS_REGISTRAR', 'CLIENTES_GESTIONAR', 'PRESUPUESTOS_GESTIONAR', 'VENTAS_HISTORIAL'],
         ],
         'Vendedor' => [
-            'descripcion' => 'Atiende clientes y arma presupuestos. No maneja dinero: el cajero los convierte en venta y cobra.',
-            'permisos' => ['PRESUPUESTOS_GESTIONAR', 'CLIENTES_GESTIONAR'],
+            'descripcion' => 'Atiende en el mostrador: arma presupuestos, vende, cobra y abre/cierra su caja. No ve el historial general, no registra ingresos/egresos extra ni anula nada.',
+            'permisos' => ['PDV_USAR', 'CAJA_ABRIR_CERRAR', 'COBRANZAS_REGISTRAR', 'PRESUPUESTOS_GESTIONAR', 'CLIENTES_GESTIONAR'],
         ],
         'Encargado de stock' => [
             'descripcion' => 'Carga productos, recibe mercadería, registra compras y ajusta el stock.',

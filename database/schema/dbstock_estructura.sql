@@ -3327,4 +3327,5 @@ INSERT INTO public.migrations (migration, batch) VALUES
 ('2026_10_22_000001_parte15_padron_ruc', 2),
 ('2026_10_23_000001_parte16_permisos_reportes', 2),
 ('2026_10_24_000001_parte17_permisos_reportes_compras_caja', 2),
-('2026_10_25_000001_parte18_permisos_reportes_fiscal', 2);
+('2026_10_25_000001_parte18_permisos_reportes_fiscal', 2),
+('2026_10_26_000001_parte19_ajuste_roles_base', 2);

@@ -6,6 +6,7 @@ use App\Models\Permiso;
 use App\Models\Rol;
 use App\Models\User;
 use App\Services\RolesBase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -43,19 +44,19 @@ class Parte12RolesTest extends TestCase
         $r = RolesBase::preparar();
         $this->assertEqualsCanonicalizing(['Gerente', 'Cajero', 'Vendedor', 'Encargado de stock', 'Contador'], $r['creados']);
 
-        $this->assertSame(['CLIENTES_GESTIONAR', 'PRESUPUESTOS_GESTIONAR'], $this->codigos('Vendedor'));
+        $this->assertSame(['CAJA_ABRIR_CERRAR', 'CLIENTES_GESTIONAR', 'COBRANZAS_REGISTRAR', 'PDV_USAR', 'PRESUPUESTOS_GESTIONAR'], $this->codigos('Vendedor'));
         $this->assertContains('PDV_USAR', $this->codigos('Cajero'));
         $this->assertContains('CAJA_ABRIR_CERRAR', $this->codigos('Cajero'));
         $this->assertContains('CONTABILIDAD_VER', $this->codigos('Contador'));
         $this->assertSame(['CATALOGO_GESTIONAR', 'COMPRAS_REGISTRAR', 'REPORTES_COMPRAS', 'REPORTES_EXPORTAR', 'REPORTES_STOCK', 'STOCK_AJUSTAR'], $this->codigos('Encargado de stock'));
     }
 
-    public function test_el_gerente_tiene_todo_menos_administrar_usuarios_configuracion_y_contabilidad_gestionar(): void
+    public function test_el_gerente_tiene_todo_menos_usuarios_configuracion_y_contabilidad(): void
     {
         RolesBase::preparar();
         $g = $this->codigos('Gerente');
         $todos = array_keys(config('permisos.catalogo'));
-        $this->assertEqualsCanonicalizing(array_values(array_diff($todos, ['USUARIOS_GESTIONAR', 'CONFIG_GESTIONAR', 'CONTABILIDAD_GESTIONAR'])), $g);
+        $this->assertEqualsCanonicalizing(array_values(array_diff($todos, ['USUARIOS_GESTIONAR', 'CONFIG_GESTIONAR', 'CONTABILIDAD_GESTIONAR', 'CONTABILIDAD_VER'])), $g);
         foreach (['VENTAS_ANULAR', 'VENTAS_DEVOLVER', 'CAJA_OPERAR_AJENA', 'AUDITORIA_VER', 'REPORTES_VER', 'CLIENTES_CREDITO'] as $c) {
             $this->assertContains($c, $g, $c);
         }
@@ -73,17 +74,68 @@ class Parte12RolesTest extends TestCase
         }
     }
 
-    public function test_el_vendedor_no_maneja_dinero_y_no_entra_a_pantallas_ajenas(): void
+    public function test_el_vendedor_vende_cobra_y_maneja_su_caja_pero_no_anula_ni_ve_el_resto(): void
     {
         RolesBase::preparar();
         $v = $this->usuarioDe('Vendedor');
-        $this->assertTrue($v->tienePermiso('PRESUPUESTOS_GESTIONAR'));
-        $this->assertFalse($v->tienePermiso('PDV_USAR'));
-        $this->assertFalse($v->tienePermiso('CAJA_ABRIR_CERRAR'));
-
-        foreach (['/usuarios', '/finanzas', '/pdv', '/roles'] as $ruta) {
+        foreach (['PDV_USAR', 'CAJA_ABRIR_CERRAR', 'COBRANZAS_REGISTRAR', 'PRESUPUESTOS_GESTIONAR', 'CLIENTES_GESTIONAR'] as $p) {
+            $this->assertTrue($v->tienePermiso($p), $p);
+        }
+        foreach (['VENTAS_ANULAR', 'VENTAS_DEVOLVER', 'COBRANZAS_ANULAR', 'VENTAS_HISTORIAL', 'CAJA_INGRESO_EGRESO', 'CAJA_TRANSFERIR', 'CAJA_OPERAR_AJENA', 'FINANZAS_VER'] as $p) {
+            $this->assertFalse($v->tienePermiso($p), $p);
+        }
+        foreach (['/usuarios', '/roles', '/auditoria'] as $ruta) {
             $this->actingAs($v)->get($ruta)->assertForbidden();
         }
+    }
+
+    public function test_el_cajero_tiene_todo_lo_del_vendedor_mas_historial_e_ingresos_egresos(): void
+    {
+        RolesBase::preparar();
+        $vend = $this->codigos('Vendedor');
+        $caj = $this->codigos('Cajero');
+        $this->assertSame([], array_values(array_diff($vend, $caj)));
+        $this->assertEqualsCanonicalizing(['CAJA_INGRESO_EGRESO', 'VENTAS_HISTORIAL'], array_values(array_diff($caj, $vend)));
+    }
+
+    public function test_el_gerente_no_entra_a_contabilidad_pero_si_anula_y_devuelve(): void
+    {
+        RolesBase::preparar();
+        $g = $this->usuarioDe('Gerente');
+        foreach (['CONTABILIDAD_VER', 'CONTABILIDAD_GESTIONAR', 'USUARIOS_GESTIONAR', 'CONFIG_GESTIONAR'] as $p) {
+            $this->assertFalse($g->tienePermiso($p), $p);
+        }
+        foreach (['VENTAS_ANULAR', 'VENTAS_DEVOLVER', 'COBRANZAS_ANULAR'] as $p) {
+            $this->assertTrue($g->tienePermiso($p), $p);
+        }
+    }
+
+    public function test_la_migracion_ajusta_roles_existentes_sin_pisar_personalizaciones(): void
+    {
+        // instalación vieja: Vendedor con los permisos originales, Gerente con contabilidad
+        $mk = function (string $rol, array $codigos) {
+            $id = DB::table('roles')->insertGetId(['rol_nombre' => $rol], 'rol_id');
+            foreach ($codigos as $c) {
+                $pid = DB::table('permisos')->where('perm_codigo', $c)->value('perm_id') ?: DB::table('permisos')->insertGetId(['perm_codigo' => $c], 'perm_id');
+                DB::table('rol_permisos')->insert(['rol_id' => $id, 'perm_id' => $pid]);
+            }
+
+            return $id;
+        };
+        foreach (['PDV_USAR', 'CAJA_ABRIR_CERRAR', 'COBRANZAS_REGISTRAR'] as $c) {
+            DB::table('permisos')->insert(['perm_codigo' => $c]);
+        }
+        $vend = $mk('Vendedor', ['PRESUPUESTOS_GESTIONAR', 'CLIENTES_GESTIONAR']);
+        $ger = $mk('Gerente', ['CONTABILIDAD_VER', 'VENTAS_ANULAR']);
+        $propio = $mk('Vendedor ruta', ['PRESUPUESTOS_GESTIONAR']);
+        $m = require database_path('migrations/2026_10_26_000001_parte19_ajuste_roles_base.php');
+        $m->up();
+        $m->up();   // idempotente
+
+        $de = fn ($id) => DB::table('rol_permisos as rp')->join('permisos as p', 'p.perm_id', '=', 'rp.perm_id')->where('rp.rol_id', $id)->pluck('p.perm_codigo')->sort()->values()->all();
+        $this->assertSame(['CAJA_ABRIR_CERRAR', 'CLIENTES_GESTIONAR', 'COBRANZAS_REGISTRAR', 'PDV_USAR', 'PRESUPUESTOS_GESTIONAR'], $de($vend));
+        $this->assertSame(['VENTAS_ANULAR'], $de($ger));
+        $this->assertSame(['PRESUPUESTOS_GESTIONAR'], $de($propio));
     }
 
     public function test_ningun_rol_base_recibe_permisos_inexistentes_y_el_administrador_no_se_toca(): void
@@ -121,7 +173,7 @@ class Parte12RolesTest extends TestCase
 
         $r = RolesBase::preparar(true);
         $this->assertContains('Vendedor', $r['restablecidos']);
-        $this->assertSame(['CLIENTES_GESTIONAR', 'PRESUPUESTOS_GESTIONAR'], $this->codigos('Vendedor'));
+        $this->assertSame(['CAJA_ABRIR_CERRAR', 'CLIENTES_GESTIONAR', 'COBRANZAS_REGISTRAR', 'PDV_USAR', 'PRESUPUESTOS_GESTIONAR'], $this->codigos('Vendedor'));
         $this->assertSame(0, $admin->permisos()->count());
     }
 
@@ -134,7 +186,7 @@ class Parte12RolesTest extends TestCase
         $this->artisan('roles:preparar', ['--restablecer' => true])->expectsConfirmation('Esto pisa los permisos de los roles base que ya existan. ¿Continuar?', 'no')->assertSuccessful();
         $this->assertSame([], $this->codigos('Vendedor'));
         $this->artisan('roles:preparar', ['--restablecer' => true])->expectsConfirmation('Esto pisa los permisos de los roles base que ya existan. ¿Continuar?', 'yes')->assertSuccessful();
-        $this->assertSame(['CLIENTES_GESTIONAR', 'PRESUPUESTOS_GESTIONAR'], $this->codigos('Vendedor'));
+        $this->assertSame(['CAJA_ABRIR_CERRAR', 'CLIENTES_GESTIONAR', 'COBRANZAS_REGISTRAR', 'PDV_USAR', 'PRESUPUESTOS_GESTIONAR'], $this->codigos('Vendedor'));
     }
 
     public function test_la_migracion_y_el_instalador_dejan_los_roles(): void

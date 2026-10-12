@@ -2326,6 +2326,7 @@ COPY public.migrations (id, migration, batch) FROM stdin;
 19	2026_10_23_000001_parte16_permisos_reportes	4
 20	2026_10_24_000001_parte17_permisos_reportes_compras_caja	5
 21	2026_10_25_000001_parte18_permisos_reportes_fiscal	6
+22	2026_10_26_000001_parte19_ajuste_roles_base	7
 \.
 
 
@@ -2485,7 +2486,6 @@ COPY public.rol_permisos (rol_id, perm_id) FROM stdin;
 2	21
 2	22
 2	23
-2	24
 2	26
 3	4
 3	7
@@ -2525,6 +2525,9 @@ COPY public.rol_permisos (rol_id, perm_id) FROM stdin;
 5	32
 2	34
 6	34
+4	7
+4	13
+4	12
 \.
 
 
@@ -2784,7 +2787,7 @@ SELECT pg_catalog.setval('public.licencia_pagos_lpa_id_seq', 1, false);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 21, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 22, true);
 
 
 --

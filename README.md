@@ -97,6 +97,17 @@ Al registrar un cliente (punto de venta o Clientes) escribís el RUC y se comple
 3. Poné `DB_DATABASE`, `DB_USERNAME` y `DB_PASSWORD` en el `.env` y corré `php artisan optimize:clear`
 4. `php artisan sistema:instalar` → te pide usuario, correo y contraseña (mínimo 10 caracteres) y crea el administrador. No deja claves guardadas en ningún archivo.
 
-Roles incluidos: Administrador (acceso total), Gerente, Cajero, Vendedor, Encargado de stock y Contador. Se ajustan desde "Gestión de Roles".
+Roles incluidos (se ajustan desde "Gestión de Roles"):
+
+| Rol | Qué puede hacer |
+|---|---|
+| **Administrador** | Acceso total del negocio. Crea usuarios, sucursales y cajas **hasta el tope de su plan** (el tope lo fija el dueño del sistema desde el panel del vendedor). |
+| **Gerente** | Todo lo operativo: ventas, caja, compras, reportes, auditoría, anular y devolver. No administra usuarios ni configuración y no entra a contabilidad. |
+| **Cajero** | Responsable del efectivo: todo lo del vendedor + historial de ventas e ingresos/egresos extra de caja. No anula ni devuelve. |
+| **Vendedor** | Mostrador: presupuestos, clientes, vende, cobra y abre/cierra su caja. No ve el historial general, no registra ingresos/egresos extra y no anula nada. |
+| **Encargado de stock** | Catálogo, compras, ajustes de stock y reportes de stock/compras. |
+| **Contador** | Contabilidad, libros de IVA y reportes. |
+
+Anular ventas, cobranzas y devoluciones queda solo para Gerente y Administrador. En una instalación que ya existe, `php artisan migrate` ajusta Vendedor y Gerente sin pisar los roles que hayas personalizado; `php artisan roles:preparar --restablecer` los deja exactamente como esta tabla (pisa los cambios hechos a mano).
 `PADRON_GESTIONAR` (importar/editar el padrón de RUC) lo tienen el Administrador y el Gerente; la consulta de RUC al cargar clientes la puede usar cualquiera que venda o gestione clientes.
 Si ya tenías el sistema instalado, después de actualizar corré `php artisan permisos:sincronizar` y asignale `PADRON_GESTIONAR` a los roles que lo necesiten.
