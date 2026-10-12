@@ -235,6 +235,9 @@
             @can('CLIENTES_GESTIONAR')
             <a href="{{ route('clientes.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('clientes*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">👥 Clientes</a>
             @endcan
+            @can('CLIENTES_GESTIONAR')
+            <a href="{{ route('padron.registros.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('padron-ruc*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🪪 Padrón de RUC</a>
+            @endcan
             @can('CATALOGO_GESTIONAR')
             <a href="{{ route('productos.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('productos*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">📦 Productos</a>
             @endcan

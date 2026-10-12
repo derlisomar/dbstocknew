@@ -64,7 +64,7 @@
                 @foreach($p->detalles as $d)
                     <tr>
                         <td><b>{{ $d->producto->pro_nombre ?? 'Producto eliminado' }}</b><div class="p5-mu">{{ $d->producto->pro_codigo ?? '' }}</div></td>
-                        <td class="p5-r">{{ rtrim(rtrim(number_format((float) $d->dpr_cantidad, 2, ',', '.'), '0'), ',') }}</td>
+                        <td class="p5-r">{{ rtrim(rtrim(number_format((float) $d->dpr_cantidad, 3, ',', '.'), '0'), ',') }}</td>
                         <td class="p5-r">{{ $fmt($d->dpr_precio) }}
                             @if(isset($cambios[$d->pro_id]))<div class="p5-mu" style="color:#d97706">hoy: {{ $fmt($cambios[$d->pro_id]) }}</div>@endif</td>
                         <td class="p5-r">{{ $fmt($d->dpr_subtotal) }}</td>

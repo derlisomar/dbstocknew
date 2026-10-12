@@ -14,9 +14,9 @@ class ComprobanteMatricial
     public const ANCHO = 80;
 
     // Columnas del detalle: cantidad, descripción, precio y total (más 3 espacios = 80)
-    private const C_CANT = 6;
+    private const C_CANT = 9;
     private const C_DESC = 40;
-    private const C_PREC = 15;
+    private const C_PREC = 12;
     private const C_TOT = 16;
 
     /** @return list<string> */
@@ -60,7 +60,7 @@ class ComprobanteMatricial
         foreach ($venta->detalles as $d) {
             $nombre = trim(($d->producto->pro_codigo ?? '').' '.($d->producto->pro_nombre ?? ''));
             $partes = self::partir($nombre, self::C_DESC);
-            $o[] = self::fila(self::cantidad($d->det_cantidad), array_shift($partes), self::gs($d->det_preciounitario), self::gs($d->det_subtotal));
+            $o[] = self::fila(\App\Support\Unidades::texto($d->det_cantidad, $d->producto->pro_unidad ?? 'UN'), array_shift($partes), self::gs($d->det_preciounitario), self::gs($d->det_subtotal));
             foreach ($partes as $resto) {
                 $o[] = self::fila('', $resto, '', '');
             }

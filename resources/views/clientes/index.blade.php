@@ -20,11 +20,28 @@ html.dark .cli-pie{background:rgba(17,24,39,.55);border-color:#1f2937}
     openModal: false, 
     editMode: false,
     cli_id: '', cli_nombre: '', cli_apellido: '', cli_ruc_ci: '',
-    cli_telefono: '', cli_direccion: '', cli_email: '', cli_limite_credito: 0, cli_es_mayorista: false,
+    cli_telefono: '', cli_direccion: '', cli_email: '', cli_limite_credito: 0, cli_es_mayorista: false, rucAviso: '', openPadron: false, cargandoPadron: false,
+    async buscarRuc() {
+        this.rucAviso = '';
+        const t = (this.cli_ruc_ci || '').trim();
+        if (this.editMode || !/^\d{4,12}(-\d)?$/.test(t)) { return; }
+        try {
+            const r = await fetch('{{ route('padron.ruc') }}?q=' + encodeURIComponent(t), { headers: { 'Accept': 'application/json' } });
+            if (!r.ok) { return; }
+            const d = await r.json();
+            if (d.existente) { this.rucAviso = 'Atención: ya existe un cliente con ese RUC (' + d.existente.cli_nombre + ').'; return; }
+            const ex = (d.padron || []).filter(p => p.ruc === t || p.ruc.startsWith(t + '-'));
+            if (ex.length === 1) {
+                if (!this.cli_nombre) { this.cli_nombre = ex[0].nombre; this.cli_apellido = ex[0].apellido || ''; }
+                if (!t.includes('-')) { this.cli_ruc_ci = ex[0].ruc; }
+                this.rucAviso = 'Datos completados desde el padrón de la DNIT' + (ex[0].estado && ex[0].estado !== 'ACTIVO' ? ' — ATENCIÓN: RUC ' + ex[0].estado : '');
+            }
+        } catch (e) {}
+    },
     openCreate() {
         this.editMode = false; this.cli_id = ''; this.cli_nombre = ''; this.cli_apellido = '';
         this.cli_ruc_ci = ''; this.cli_telefono = ''; this.cli_direccion = ''; this.cli_email = '';
-        this.cli_limite_credito = 0; this.cli_es_mayorista = false; this.openModal = true;
+        this.cli_limite_credito = 0; this.cli_es_mayorista = false; this.rucAviso = ''; this.openModal = true;
     },
     openEdit(cli) {
         this.editMode = true; this.cli_id = cli.cli_id; this.cli_nombre = cli.cli_nombre;
@@ -43,10 +60,47 @@ html.dark .cli-pie{background:rgba(17,24,39,.55);border-color:#1f2937}
             </h2>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Administra tu cartera, límites de crédito y categorías.</p>
         </div>
+        <div class="flex flex-wrap gap-2">
+        <button @click="openPadron = true" type="button" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2.5 rounded-xl font-bold text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" title="Cargar el padrón de RUC de la DNIT">
+            📥 Importar padrón DNIT
+        </button>
         <button @click="openCreate()" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-95 flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             Nuevo Cliente
         </button>
+        </div>
+    </div>
+
+    @if(session('padron_ok'))
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ session('padron_ok') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{{ session('error') }}</div>
+    @endif
+    @if($errors->any())
+        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            @foreach($errors->all() as $e)<p>{{ $e }}</p>@endforeach
+        </div>
+    @endif
+
+    <!-- Importar padrón de RUC (DNIT) -->
+    <div x-show="openPadron" style="display:none" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div @click.away="if(!cargandoPadron) openPadron = false" class="bg-white dark:bg-[#1c2434] w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
+            <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white">📥 Importar padrón de RUC (DNIT)</h3>
+                <button type="button" @click="openPadron = false" class="text-gray-400 hover:text-gray-800 dark:hover:text-white text-xl font-bold">&times;</button>
+            </div>
+            <form method="POST" action="{{ route('padron.importar') }}" enctype="multipart/form-data" @submit="cargandoPadron = true" class="p-6 space-y-4">
+                @csrf
+                <p class="text-sm text-gray-600 dark:text-gray-300">Descargá los archivos <b>ruc0 a ruc9</b> del <a class="text-blue-600 underline" target="_blank" rel="noopener" href="https://www.dnit.gov.py/web/portal-institucional/listado-de-ruc-con-sus-equivalencias">listado de RUC de la DNIT</a> y elegilos acá (.txt, .csv o .zip; podés elegir varios a la vez).</p>
+                <input type="file" name="archivos[]" multiple accept=".txt,.csv,.zip" required class="block w-full text-sm text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg p-2">
+                <p class="text-xs text-gray-400">Se guardan en una tabla de consulta aparte (no se agregan como clientes: solo sirven para autocompletar cuando registrás uno). Registros actualmente cargados: <b>{{ number_format(\App\Models\PadronRuc::count(), 0, ',', '.') }}</b>. Cada archivo tarda unos segundos; si lo cargás de nuevo se actualiza sin duplicar.</p>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="openPadron = false" :disabled="cargandoPadron" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg">Cancelar</button>
+                    <button type="submit" :disabled="cargandoPadron" class="px-5 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-60" x-text="cargandoPadron ? 'Importando… no cierres la página' : 'Importar'"></button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Tarjetas de Estadísticas (KPIs) -->
@@ -189,7 +243,8 @@ html.dark .cli-pie{background:rgba(17,24,39,.55);border-color:#1f2937}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label class="block text-[11px] uppercase font-black text-gray-500 mb-1">RUC / Documento *</label>
-                        <input type="text" name="cli_ruc_ci" x-model="cli_ruc_ci" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent py-2.5 px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <input type="text" name="cli_ruc_ci" x-model="cli_ruc_ci" @input.debounce.400ms="buscarRuc()" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent py-2.5 px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <p x-show="rucAviso" x-text="rucAviso" class="text-[11px] text-emerald-600 mt-1" style="display:none"></p>
                     </div>
                     <div>
                         <label class="block text-[11px] uppercase font-black text-gray-500 mb-1">Teléfono</label>

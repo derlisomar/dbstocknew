@@ -172,7 +172,7 @@ class VentaService
                     $motivo ? 'Devolución: '.$motivo : 'Devolución de venta', 'venta:'.$venta->vta_id
                 );
 
-                $restante = round((float) $detalle->det_cantidad - $cantidad, 2);
+                $restante = round((float) $detalle->det_cantidad - $cantidad, 3);
                 $detalle->update([
                     'det_cantidad' => $restante,
                     'det_subtotal' => round($restante * (float) $detalle->det_preciounitario, 2),

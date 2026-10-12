@@ -1,0 +1,6 @@
+Credenciales del administrador
+
+Usuario: admin
+Clave temporal: Dobi-0c531504-Inicio
+Cambiala apenas entres.
+Si querés otro usuario o correo, editá el script antes de ejecutarlo.

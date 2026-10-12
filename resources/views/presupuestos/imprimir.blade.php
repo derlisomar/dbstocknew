@@ -59,7 +59,7 @@
         @foreach($p->detalles as $d)
             <tr>
                 <td>{{ $d->producto->pro_nombre ?? 'Producto' }}</td>
-                <td class="r">{{ rtrim(rtrim(number_format((float) $d->dpr_cantidad, 2, ',', '.'), '0'), ',') }}</td>
+                <td class="r">{{ rtrim(rtrim(number_format((float) $d->dpr_cantidad, 3, ',', '.'), '0'), ',') }}</td>
                 <td class="r">{{ $fmt($d->dpr_precio) }}</td>
                 <td class="r">{{ $fmt($d->dpr_subtotal) }}</td>
             </tr>

@@ -285,7 +285,10 @@ class PresupuestoService
             }
 
             $precio = $this->precios->precioFinal($producto, $esMayorista, $promos);
-            $subtotal = round($precio * $cantidad, 2);
+            if (! \App\Support\Unidades::cantidadValida($producto->pro_unidad, (float) $cantidad)) {
+                throw new NegocioException("«{$producto->pro_nombre}» se vende ".(\App\Support\Unidades::esFraccionable($producto->pro_unidad) ? 'con hasta 3 decimales.' : 'por unidad: la cantidad tiene que ser entera.'));
+            }
+            $subtotal = \App\Support\Unidades::importe($precio, (float) $cantidad, $producto->pro_unidad);
             $total += $subtotal;
             $detalle[] = ['pro_id' => (int) $proId, 'cantidad' => $cantidad, 'precio' => $precio, 'subtotal' => $subtotal];
         }

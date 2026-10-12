@@ -1,59 +1,76 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# dbstock
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema web de ventas, stock, caja, cobranzas, compras, presupuestos y contabilidad, hecho con **Laravel 12** y **PostgreSQL**.
+Incluye punto de venta (ticket y matricial), roles y permisos, licencias por plan, página pública con pedido de demo y un panel privado para el vendedor del sistema.
 
-## About Laravel
+Desarrollado por Dobi Soluciones Informáticas.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Requisitos
+- PHP 8.2 o superior (extensiones `pdo_pgsql`, `mbstring`, `openssl`, `fileinfo`)
+- PostgreSQL 12 o superior
+- Composer (y Node.js solo si vas a recompilar los estilos con `npm run build`)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Instalación en una máquina nueva
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+```
+1. En `.env` revisá `DB_DATABASE`, `DB_USERNAME` y `DB_PASSWORD`.
+2. Creá la base y cargá la estructura:
+```bash
+createdb -U postgres dbStockNew
+psql -U postgres -d dbStockNew -f database/schema/dbstock_estructura.sql
+php artisan migrate          # carga los planes y adicionales; no repite el resto
+php artisan sistema:instalar # crea permisos, roles, administrador, sucursal, depósito y caja
+php artisan sistema:verificar
+php artisan serve
+```
+Agregá `--demo` a `sistema:instalar` para cargar productos y clientes inventados.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Actualizar una instalación existente
+```bash
+git pull
+composer install --no-dev
+php artisan migrate
+php artisan optimize:clear
+```
 
-## Learning Laravel
+## Comandos útiles
+| Comando | Para qué sirve |
+|---|---|
+| `sistema:instalar` | Prepara una instalación nueva |
+| `sistema:verificar` | Revisa la instalación (producción, correo, respaldos, índices) |
+| `roles:preparar [--restablecer]` | Crea los roles listos: Gerente, Cajero, Vendedor, Encargado de stock y Contador |
+| `vendedor:clave` | Genera la clave del panel del vendedor (`VENDEDOR_CLAVE_HASH`) |
+| `correo:probar tucorreo@ejemplo.com` | Prueba el envío de correo y explica si falla |
+| `respaldo:base` | Respaldo de la base de datos |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Correo de las demos
+En el `.env` del servidor (nunca en `.env.example`) configurá `MAIL_MAILER=smtp` con los datos que cPanel muestra en
+*Correo > Cuentas de correo > Connect Devices*. Usá el nombre de servidor saliente (Outgoing Server) tal cual aparece.
+Después corré `php artisan optimize:clear` y probá desde el panel del vendedor en *Herramientas > Probar correo*.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Pruebas
+```bash
+php artisan test
+```
 
-## Laravel Sponsors
+## Seguridad
+- Nunca subas el archivo `.env` ni respaldos con datos reales a Git.
+- En producción: `APP_ENV=production`, `APP_DEBUG=false` y HTTPS.
+- Si una contraseña se publicó por error, cambiala de inmediato.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Unidades, códigos de barra y balanza
 
-### Premium Partners
+- Cada producto se vende por **Unidad**, **Kilo** o **Litro** (campo "Se vende por"). Precio, costo y stock van por kilo/litro; en caja se puede tipear en gramos/mililitros.
+- **Códigos de barra:** en el formulario del producto, un código por línea (varios por producto). En el punto de venta, escanear + Enter selecciona el producto; buscar por nombre sigue funcionando igual.
+- **Balanza con etiqueta:** cargá el **PLU** del producto (campo "Código de balanza"). Formato por defecto: `2` + PLU de 6 dígitos + 5 dígitos de valor + verificador. Se ajusta con las variables `BALANZA_*` del `.env` según el modelo de balanza.
+- Tras actualizar: `php artisan migrate` (convierte cantidades a 3 decimales) y `php artisan optimize:clear`. Hacé backup antes.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Padrón de RUC de la DNIT (autocompletar clientes)
 
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. Descargá los archivos del [listado de RUC de la DNIT](https://www.dnit.gov.py/web/portal-institucional/listado-de-ruc-con-sus-equivalencias).
+2. Probá cómo se leen: `php artisan padron:importar archivo.zip --probar` (muestra las primeras líneas sin guardar).
+3. Importá: `php artisan padron:importar ruc0.zip ruc1.zip ...` (se puede repetir para actualizar).
+Al registrar un cliente (punto de venta o Clientes) escribís el RUC y se completa el nombre. En el buscador de clientes del PDV, al tipear un RUC aparecen también los del padrón.

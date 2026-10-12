@@ -139,6 +139,14 @@ Route::middleware(['auth', 'licencia'])->group(function () {
     });
 
     // ---------------------------------------------------------------- Clientes
+    Route::get('/padron/ruc', [\App\Http\Controllers\PadronController::class, 'buscar'])->middleware('permiso:PDV_USAR,CLIENTES_GESTIONAR')->name('padron.ruc');
+    Route::middleware('permiso:CLIENTES_GESTIONAR')->prefix('padron-ruc')->name('padron.registros.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\PadronRegistroController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\PadronRegistroController::class, 'store'])->name('store');
+        Route::put('/{ruc}', [\App\Http\Controllers\PadronRegistroController::class, 'update'])->where('ruc', '[0-9A-Za-z]+')->name('update');
+        Route::delete('/{ruc}', [\App\Http\Controllers\PadronRegistroController::class, 'destroy'])->where('ruc', '[0-9A-Za-z]+')->name('destroy');
+    });
+    Route::post('/clientes/padron/importar', [\App\Http\Controllers\PadronController::class, 'importar'])->middleware('permiso:CLIENTES_GESTIONAR')->name('padron.importar');
     Route::resource('clientes', ClienteController::class)->middleware('permiso:CLIENTES_GESTIONAR');
 
     Route::middleware(['permiso:CLIENTES_CREDITO', 'modulo:cobranzas'])->group(function () {
@@ -150,6 +158,7 @@ Route::middleware(['auth', 'licencia'])->group(function () {
     Route::middleware('permiso:PDV_USAR')->group(function () {
         Route::get('/pdv', [PdvController::class, 'index'])->name('pdv.index');
         Route::post('/pdv/store', [PdvController::class, 'store'])->name('pdv.store');
+        Route::get('/pdv/codigo', [PdvController::class, 'buscarCodigo'])->name('pdv.codigo');
         Route::post('/pdv/cliente-ajax', [PdvController::class, 'storeClienteAjax'])->name('pdv.cliente.ajax');
         Route::get('/pdv/ticket-simple/{id}', [PdvController::class, 'ticketSimple']);
         Route::get('/pdv/ticket-factura/{id}', [PdvController::class, 'ticketFactura']);

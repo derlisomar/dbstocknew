@@ -30,12 +30,17 @@
                     x-model="searchProduct" 
                     @focus="openBusquedaProd = true" 
                     @click.away="openBusquedaProd = false"
-                    @input="openBusquedaProd = true"
+                    @input="openBusquedaProd = true; avisoCodigo = ''; programarLectura()"
+                    @keydown.enter.prevent="leerCodigo()"
+                    x-ref="buscador"
+                    autocomplete="off"
                     placeholder="Escanee el código de barras o busque por nombre..." 
                     class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 py-3.5 pl-12 pr-4 text-sm font-medium text-gray-800 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm"
                     autofocus
                 >
                 
+                <p x-show="avisoCodigo" x-text="avisoCodigo" class="mt-2 text-sm font-bold text-red-500" style="display:none"></p>
+
                 <!-- Lista desplegable flotante de productos -->
                 <div 
                     x-show="openBusquedaProd && searchProduct.length > 0" 
@@ -60,10 +65,10 @@
                                 </div>
                             </div>
                             <div class="text-right shrink-0">
-                                <div class="text-sm font-black text-blue-600 dark:text-blue-400 mb-1" x-text="formatMoneda(pro.pro_precioventa)"></div>
+                                <div class="text-sm font-black text-blue-600 dark:text-blue-400 mb-1" x-text="formatMoneda(pro.pro_precioventa) + (pro.pro_unidad !== 'UN' ? ' / ' + unidades[pro.pro_unidad].corta : '')"></div>
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md inline-block uppercase tracking-wider" 
                                       :class="pro.pro_stockactual <= 0 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'"
-                                      x-text="'Stock: ' + pro.pro_stockactual"></span>
+                                      x-text="'Stock: ' + pro.pro_stockactual + (pro.pro_unidad !== 'UN' ? ' ' + unidades[pro.pro_unidad].corta : '')"></span>
                             </div>
                         </div>
                     </template>
@@ -95,8 +100,19 @@
                             <tr class="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group">
                                 <td class="py-3 px-5 font-medium text-gray-800 dark:text-gray-200" x-text="item.pro_nombre"></td>
                                 <td class="py-3 px-5">
-                                    <div class="flex items-center justify-center">
-                                        <input type="number" min="1" x-model.number="item.cantidad" @change="actualizarSubtotal(index)" class="w-16 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <template x-if="!item.fraccion">
+                                            <input type="number" min="1" step="1" x-model.number="item.cantidad" @change="actualizarSubtotal(index)" class="w-16 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold">
+                                        </template>
+                                        <template x-if="item.fraccion">
+                                            <div class="flex items-center gap-1">
+                                                <input type="number" min="0" step="any" :id="'cant-' + index" x-model.number="item.entrada" @input="fijarCantidad(index)" class="w-24 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold">
+                                                <select x-model="item.medida" @change="cambiarMedida(index)" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-1.5 px-1 text-sm font-bold">
+                                                    <option value="base" x-text="item.corta"></option>
+                                                    <option value="menor" x-text="item.menor"></option>
+                                                </select>
+                                            </div>
+                                        </template>
                                     </div>
                                 </td>
                                 <td class="py-3 px-5 text-right text-gray-500 font-medium" x-text="formatMoneda(item.precio)"></td>
@@ -141,7 +157,7 @@
                         x-model="searchCliente" 
                         @focus="openBusqueda = true" 
                         @click.away="openBusqueda = false"
-                        @input="clienteSeleccionado = null; cli_id = null; openBusqueda = true"
+                        @input="clienteSeleccionado = null; cli_id = null; openBusqueda = true; buscarPadronCliente()"
                         placeholder="Seleccione o busque un cliente..." 
                         class="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 py-2.5 px-4 text-sm text-gray-800 dark:text-white outline-none focus:border-blue-500 transition"
                     >
@@ -173,8 +189,18 @@
                             </div>
                         </template>
 
+                        <!-- Coincidencias del padrón de RUC de la DNIT (aún no son clientes) -->
+                        <template x-for="p in padronSug" :key="p.ruc">
+                            <div @click="usarPadron(p); openBusqueda = false"
+                                 class="px-4 py-2.5 cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                                <span class="text-[10px] uppercase font-black text-emerald-600 mr-1">Padrón DNIT</span>
+                                <span class="font-black text-gray-900 dark:text-white" x-text="p.ruc"></span> - <span x-text="p.completo"></span>
+                                <span class="block text-[11px]" :class="p.estado && p.estado !== 'ACTIVO' ? 'text-red-500 font-bold' : 'text-gray-400'" x-text="(p.estado && p.estado !== 'ACTIVO' ? 'RUC ' + p.estado + ' · ' : '') + 'Tocá para registrarlo como cliente'"></span>
+                            </div>
+                        </template>
+
                         <!-- Mensaje por si no hay coincidencias -->
-                        <div x-show="clientesFiltrados.length === 0" class="px-4 py-3 text-sm text-gray-500 text-center font-medium">
+                        <div x-show="clientesFiltrados.length === 0 && padronSug.length === 0" class="px-4 py-3 text-sm text-gray-500 text-center font-medium">
                             No se encontraron clientes con esa búsqueda.
                         </div>
                     </div>
@@ -254,7 +280,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 mb-1">RUC / CI *</label>
-                        <input type="text" x-model="nuevoCli.cli_ruc_ci" class="w-full rounded border border-gray-300 dark:border-gray-700 bg-transparent py-2.5 px-3 text-sm text-gray-800 dark:text-white outline-none focus:border-blue-500" required>
+                        <input type="text" x-model="nuevoCli.cli_ruc_ci" @input.debounce.400ms="buscarRucModal()" class="w-full rounded border border-gray-300 dark:border-gray-700 bg-transparent py-2.5 px-3 text-sm text-gray-800 dark:text-white outline-none focus:border-blue-500" required>
+                        <p x-show="rucAviso" x-text="rucAviso" class="text-[11px] text-emerald-600 mt-1" style="display:none"></p>
                     </div>
                     <div>
                         <label class="block text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 mb-1">Teléfono *</label>
@@ -268,8 +295,8 @@
                         <input type="text" x-model="nuevoCli.cli_nombre" class="w-full rounded border border-gray-300 dark:border-gray-700 bg-transparent py-2.5 px-3 text-sm text-gray-800 dark:text-white outline-none focus:border-blue-500" required>
                     </div>
                     <div>
-                        <label class="block text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 mb-1">Apellido *</label>
-                        <input type="text" x-model="nuevoCli.cli_apellido" class="w-full rounded border border-gray-300 dark:border-gray-700 bg-transparent py-2.5 px-3 text-sm text-gray-800 dark:text-white outline-none focus:border-blue-500" required>
+                        <label class="block text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 mb-1">Apellido</label>
+                        <input type="text" x-model="nuevoCli.cli_apellido" class="w-full rounded border border-gray-300 dark:border-gray-700 bg-transparent py-2.5 px-3 text-sm text-gray-800 dark:text-white outline-none focus:border-blue-500">
                     </div>
                 </div>
 
@@ -319,6 +346,14 @@
             // --- VARIABLES EXISTENTES ---
             searchProduct: '', 
             productos: @json($productos), 
+            unidades: @json($unidades),
+            urlCodigo: @json(route('pdv.codigo')),
+            avisoCodigo: '',
+            urlPadron: @json(route('padron.ruc')),
+            padronSug: [],
+            timerPadron: null,
+            rucAviso: '',
+            timerLectura: null,
             clientes: @json($clientes),
             carrito: [], 
             cli_id: '', 
@@ -360,7 +395,7 @@
                     const pro = this.productos.find(p => p.pro_id == it.pro_id);
                     if (!pro) { avisos.push('Un producto del presupuesto ya no está disponible.'); return; }
                     const stock = parseFloat(pro.pro_stockactual) || 0;
-                    if (stock < 1) { avisos.push('«' + pro.pro_nombre + '» no tiene stock y no se agregó.'); return; }
+                    if (stock <= 0) { avisos.push('«' + pro.pro_nombre + '» no tiene stock y no se agregó.'); return; }
 
                     this.agregarAlCarrito(pro);
                     const i = this.carrito.findIndex(x => x.pro_id === pro.pro_id);
@@ -368,8 +403,7 @@
                     const pedido = parseFloat(it.cantidad) || 1;
                     const cantidad = Math.min(pedido, stock);
                     if (cantidad < pedido) { avisos.push('«' + pro.pro_nombre + '»: se presupuestaron ' + pedido + ' y solo hay ' + stock + ' en stock.'); }
-                    this.carrito[i].cantidad = cantidad;
-                    this.carrito[i].subtotal = cantidad * this.carrito[i].precio;
+                    this.ponerCantidad(i, cantidad);
                 });
 
                 if (avisos.length) {
@@ -388,6 +422,58 @@
                     (c.cli_apellido && c.cli_apellido.toLowerCase().includes(q)) ||
                     (c.cli_ruc_ci && String(c.cli_ruc_ci).toLowerCase().includes(q))
                 );
+            },
+
+            async consultarRuc(q) {
+                try {
+                    const r = await fetch(this.urlPadron + '?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } });
+                    if (r.ok) { return await r.json(); }
+                } catch (e) {}
+                return { existente: null, padron: [] };
+            },
+
+            // Mientras se escribe un RUC en el buscador de clientes: sugiere los del padrón de la DNIT que todavía no son clientes.
+            buscarPadronCliente() {
+                clearTimeout(this.timerPadron);
+                this.padronSug = [];
+                const t = this.searchCliente.trim();
+                if (!/^\d{4,12}(-\d?)?$/.test(t)) { return; }
+                this.timerPadron = setTimeout(async () => {
+                    const d = await this.consultarRuc(t);
+                    this.padronSug = (d.padron || []).filter(p => !this.clientes.some(c => String(c.cli_ruc_ci) === p.ruc));
+                }, 300);
+            },
+
+            usarPadron(p) {
+                this.nuevoCli = { cli_ruc_ci: p.ruc, cli_nombre: p.nombre, cli_apellido: p.apellido || '', cli_telefono: '', cli_es_mayorista: false };
+                this.rucAviso = 'Datos completados desde el padrón de la DNIT' + (p.estado && p.estado !== 'ACTIVO' ? ' — ATENCIÓN: RUC ' + p.estado : '');
+                this.padronSug = [];
+                this.showModalCliente = true;
+            },
+
+            // En el formulario de cliente nuevo: al escribir el RUC completa el nombre, o avisa si ya es cliente.
+            async buscarRucModal() {
+                const t = (this.nuevoCli.cli_ruc_ci || '').trim();
+                this.rucAviso = '';
+                if (!/^\d{4,12}(-\d)?$/.test(t)) { return; }
+                const d = await this.consultarRuc(t);
+                if (d.existente) {
+                    const c = this.clientes.find(x => x.cli_id === d.existente.cli_id) || d.existente;
+                    if (!this.clientes.some(x => x.cli_id === c.cli_id)) { this.clientes.push(c); }
+                    this.seleccionarCliente(c);
+                    this.showModalCliente = false;
+                    Swal.fire('Ya es cliente', 'Se seleccionó a ' + c.cli_nombre + ' ' + (c.cli_apellido || ''), 'info');
+                    return;
+                }
+                const exacto = (d.padron || []).filter(p => p.ruc === t || p.ruc.startsWith(t + '-'));
+                if (exacto.length === 1) {
+                    if (!this.nuevoCli.cli_nombre) { this.nuevoCli.cli_nombre = exacto[0].nombre; this.nuevoCli.cli_apellido = exacto[0].apellido || ''; }
+                    if (!t.includes('-')) { this.nuevoCli.cli_ruc_ci = exacto[0].ruc; }
+                    const est = exacto[0].estado;
+                    this.rucAviso = 'Datos completados desde el padrón de la DNIT' + (est && est !== 'ACTIVO' ? ' — ATENCIÓN: RUC ' + est : '');
+                } else if ((d.padron || []).length === 0 && t.length >= 6) {
+                    this.rucAviso = 'No figura en el padrón cargado: completá los datos a mano.';
+                }
             },
 
             seleccionarCliente(cli) {
@@ -416,7 +502,7 @@
             get filteredProducts() {
                 let term = this.searchProduct.toLowerCase();
                 if(term === '') return this.productos.slice(0, 8);
-                return this.productos.filter(p => p.pro_nombre.toLowerCase().includes(term) || (p.pro_codigo && p.pro_codigo.toLowerCase().includes(term)));
+                return this.productos.filter(p => p.pro_nombre.toLowerCase().includes(term) || (p.pro_codigo && p.pro_codigo.toLowerCase().includes(term)) || (p.barras || []).some(b => b.toLowerCase().includes(term)));
             },
 
 
@@ -443,14 +529,58 @@
 
                         // Actualizar el ítem en el carrito
                         item.precio = precioFinal;
-                        item.subtotal = item.cantidad * item.precio;
+                        item.subtotal = this.importe(item.cantidad, item.precio);
                     }
                 });
             },
 
-            agregarAlCarrito(pro) {
-                let qtyActual = this.carrito.find(i => i.pro_id === pro.pro_id)?.cantidad || 0;
-                if (qtyActual + 1 > pro.pro_stockactual) {
+            // Redondeos: las cantidades llevan hasta 3 decimales y los importes se redondean a guaraníes enteros en kilos y litros.
+            redondear3(n) { return Math.round((parseFloat(n) || 0) * 1000) / 1000; },
+            importe(cantidad, precio) { return Math.round(cantidad * precio * 100) / 100; },
+            unidadDe(pro) { return pro.pro_unidad || 'UN'; },
+            esFraccion(pro) { return this.unidadDe(pro) !== 'UN'; },
+
+            // Pone una cantidad (en kilos/litros o unidades) en un renglón del carrito.
+            ponerCantidad(index, cantidad) {
+                const it = this.carrito[index];
+                it.cantidad = this.redondear3(cantidad);
+                if (it.fraccion) {
+                    const f = this.unidades[it.unidad].factor;
+                    it.entrada = it.medida === 'menor' ? this.redondear3(it.cantidad * f) : it.cantidad;
+                }
+                it.subtotal = it.fraccion ? Math.round(it.cantidad * it.precio) : this.importe(it.cantidad, it.precio);
+            },
+
+            // El cajero escribió una cantidad en kilos/litros o en gramos/mililitros.
+            fijarCantidad(index) {
+                const it = this.carrito[index];
+                const f = this.unidades[it.unidad].factor;
+                const entrada = parseFloat(it.entrada) || 0;
+                let cant = this.redondear3(it.medida === 'menor' ? entrada / f : entrada);
+                const pro = this.productos.find(p => p.pro_id === it.pro_id);
+                if (pro && cant > pro.pro_stockactual) {
+                    Swal.fire('Aviso', 'Cantidad supera el stock. Ajustado al máximo.', 'warning');
+                    cant = parseFloat(pro.pro_stockactual);
+                    it.entrada = it.medida === 'menor' ? this.redondear3(cant * f) : cant;
+                }
+                it.cantidad = cant;
+                it.subtotal = Math.round(cant * it.precio);
+            },
+
+            // Cambió de kilos a gramos (o litros a mililitros): se muestra la misma cantidad en la otra medida.
+            cambiarMedida(index) {
+                const it = this.carrito[index];
+                const f = this.unidades[it.unidad].factor;
+                it.entrada = it.medida === 'menor' ? this.redondear3(it.cantidad * f) : it.cantidad;
+            },
+
+            // `cantidad` viene de una etiqueta de balanza (kilos/litros); si es null suma 1 (o pide la cantidad en kilos/litros).
+            agregarAlCarrito(pro, cantidad = null) {
+                const fraccion = this.esFraccion(pro);
+                const aSumar = cantidad !== null ? this.redondear3(cantidad) : 1;
+                const index0 = this.carrito.findIndex(item => item.pro_id === pro.pro_id);
+                const qtyActual = index0 !== -1 ? this.carrito[index0].cantidad : 0;
+                if (qtyActual + aSumar > parseFloat(pro.pro_stockactual) + 0.0000001) {
                     Swal.fire('Sin Stock', 'No stock suficiente.', 'error');
                     return;
                 }
@@ -464,37 +594,105 @@
                 let precioBase = pro.en_promocion ? precioPromo : precioNormal;
 
                 // 3. Verificar si el cliente seleccionado es mayorista
-                // Usamos == por si this.cli_id es un string y c.cli_id es un número
                 let clienteObj = this.clientes.find(c => c.cli_id == this.cli_id);
-                
-                // Aseguramos leer el booleano correctamente (puede venir como 1 o true desde la BD)
                 let esMayorista = clienteObj ? (clienteObj.cli_es_mayorista == 1 || clienteObj.cli_es_mayorista === true) : false;
 
                 // 4. Determinar el precio final
                 let precioFinal = (esMayorista && precioMayorista > 0) ? precioMayorista : precioBase;
-                
-                let index = this.carrito.findIndex(item => item.pro_id === pro.pro_id);
+
+                let index = index0;
                 if (index !== -1) {
-                    this.carrito[index].cantidad++;
-                    this.carrito[index].subtotal = this.carrito[index].cantidad * this.carrito[index].precio;
+                    this.ponerCantidad(index, qtyActual + aSumar);
                 } else {
-                    this.carrito.push({ 
-                        pro_id: pro.pro_id, 
-                        pro_nombre: pro.pro_nombre, 
-                        precio: precioFinal, 
-                        cantidad: 1, 
-                        subtotal: precioFinal 
+                    const u = this.unidades[this.unidadDe(pro)];
+                    this.carrito.push({
+                        pro_id: pro.pro_id,
+                        pro_nombre: pro.pro_nombre,
+                        precio: precioFinal,
+                        cantidad: 0,
+                        subtotal: 0,
+                        fraccion: fraccion,
+                        unidad: this.unidadDe(pro),
+                        corta: u.corta,
+                        menor: u.menor,
+                        medida: 'base',
+                        entrada: 0
                     });
+                    index = this.carrito.length - 1;
+                    this.ponerCantidad(index, aSumar);
                 }
+
+                // Producto de peso agregado a mano: deja el cursor en la cantidad para escribir los gramos.
+                if (fraccion && cantidad === null) {
+                    this.$nextTick(() => { const el = document.getElementById('cant-' + index); if (el) { el.focus(); el.select(); } });
+                }
+            },
+
+            // Lector de códigos sin Enter: si lo escrito parece un código (8 a 14 dígitos, o un código de barra ya
+            // registrado) y se deja de escribir un instante, se agrega solo. Los nombres siguen necesitando Enter.
+            programarLectura() {
+                clearTimeout(this.timerLectura);
+                const t = this.searchProduct.trim();
+                const parece = /^\d{8,14}$/.test(t) || this.productos.some(p => (p.barras || []).includes(t));
+                if (!parece) { return; }
+                this.timerLectura = setTimeout(() => this.leerCodigo(), 120);
+            },
+
+            // Enter en el buscador (o lectura automática): código de barras, etiqueta de balanza o búsqueda por nombre.
+            async leerCodigo() {
+                clearTimeout(this.timerLectura);
+                const texto = this.searchProduct.trim();
+                if (!texto) { return; }
+                this.avisoCodigo = '';
+
+                let hallado = null;
+                try {
+                    const r = await fetch(this.urlCodigo + '?codigo=' + encodeURIComponent(texto), { headers: { 'Accept': 'application/json' } });
+                    if (r.ok) { hallado = await r.json(); }
+                } catch (e) {
+                    // Sin conexión con el servidor: se busca el código exacto entre los productos ya cargados.
+                    const p = this.productos.find(p => p.pro_codigo === texto || (p.barras || []).includes(texto));
+                    if (p) { hallado = { ok: true, pro_id: p.pro_id, cantidad: null }; }
+                }
+
+                if (hallado && hallado.ok) {
+                    const pro = this.productos.find(p => p.pro_id === hallado.pro_id);
+                    if (pro) {
+                        this.agregarAlCarrito(pro, hallado.cantidad);
+                        this.limpiarBuscador();
+                        return;
+                    }
+                }
+
+                // No era un código: si por nombre queda un solo producto, se agrega; si hay varios se elige de la lista.
+                const lista = this.filteredProducts;
+                if (lista.length === 1 && !/^\d{6,}$/.test(texto)) {
+                    this.agregarAlCarrito(lista[0]);
+                    this.limpiarBuscador();
+                    return;
+                }
+                if (/^\d{6,}$/.test(texto) || lista.length === 0) {
+                    this.avisoCodigo = 'Código no registrado: ' + texto;
+                    this.searchProduct = '';
+                    this.openBusquedaProd = false;
+                    this.$refs.buscador.focus();
+                }
+            },
+
+            limpiarBuscador() {
+                this.searchProduct = '';
+                this.openBusquedaProd = false;
+                this.$nextTick(() => this.$refs.buscador.focus());
             },
 
             actualizarSubtotal(index) {
                 let pro = this.productos.find(p => p.pro_id === this.carrito[index].pro_id);
-                if(this.carrito[index].cantidad > pro.pro_stockactual) {
+                let cant = parseFloat(this.carrito[index].cantidad) || 1;
+                if (cant > pro.pro_stockactual) {
                     Swal.fire('Aviso', 'Cantidad supera el stock. Ajustado al máximo.', 'warning');
-                    this.carrito[index].cantidad = pro.pro_stockactual;
+                    cant = pro.pro_stockactual;
                 }
-                this.carrito[index].subtotal = this.carrito[index].cantidad * this.carrito[index].precio;
+                this.ponerCantidad(index, cant);
             },
 
             eliminarDelCarrito(index) { 

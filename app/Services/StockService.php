@@ -43,8 +43,8 @@ class StockService
             throw new NegocioException('Producto no encontrado.');
         }
 
-        $cantidad = round($cantidad, 2);
-        $nuevo = round((float) $producto->pro_stockactual + $cantidad, 2);
+        $cantidad = round($cantidad, 3);
+        $nuevo = round((float) $producto->pro_stockactual + $cantidad, 3);
 
         if ($nuevo < 0 && ! $permitirNegativo) {
             throw new NegocioException("«{$producto->pro_nombre}» tiene {$producto->pro_stockactual} en stock: no se puede sacar ".abs($cantidad).'.');
@@ -86,7 +86,7 @@ class StockService
         return DB::transaction(function () use ($productoId, $tipo, $cantidad, $motivo) {
             if ($tipo === 'CONTEO') {
                 $actual = (float) Producto::whereKey($productoId)->lockForUpdate()->value('pro_stockactual');
-                $delta = round($cantidad - $actual, 2);
+                $delta = round($cantidad - $actual, 3);
                 $texto = trim($motivo).' (contado: '.$cantidad.', sistema: '.$actual.')';
             } else {
                 $delta = $tipo === 'AJUSTE_SALIDA' ? -$cantidad : $cantidad;

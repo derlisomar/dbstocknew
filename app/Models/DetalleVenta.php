@@ -19,6 +19,8 @@ class DetalleVenta extends Model
         'det_preciocosto' // <--- Añadido para el costo histórico del producto
     ];
 
+    protected $casts = ['det_cantidad' => 'float'];
+
     public function producto()
     {
         return $this->belongsTo(Producto::class, 'pro_id', 'pro_id');

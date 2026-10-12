@@ -9,7 +9,10 @@
     pro_preciocosto: 0, pro_precioventa: 0, pro_preciomayorista: 0,
     pro_stockactual: 0, pro_stockminimo: 5, pro_fechavencimiento: '',
     pro_activo: true, current_image: '',
+    pro_unidad: 'UN', pro_plu: '', codigos_texto: '',
+    get fraccion() { return this.pro_unidad !== 'UN'; },
     openCreate() {
+        this.pro_unidad = 'UN'; this.pro_plu = ''; this.codigos_texto = '';
         this.editMode = false; this.pro_id = ''; this.cat_id = ''; this.prov_id = '';
         this.suc_id = ''; this.dep_id = ''; this.pro_codigo = ''; this.pro_nombre = '';
         this.pro_descripcion = ''; this.pro_preciocosto = 0; this.pro_precioventa = 0;
@@ -26,6 +29,8 @@
         this.pro_stockactual = pro.pro_stockactual; this.pro_stockminimo = pro.pro_stockminimo;
         this.pro_fechavencimiento = pro.pro_fechavencimiento || ''; this.pro_activo = pro.pro_activo;
         this.current_image = pro.pro_imagen ? '/storage/' + pro.pro_imagen : '';
+        this.pro_unidad = pro.pro_unidad || 'UN'; this.pro_plu = pro.pro_plu || '';
+        this.codigos_texto = (pro.codigos || []).map(c => c.cod_codigo).join('\n');
         this.openModal = true;
     }
 }">
@@ -130,11 +135,11 @@
                             </td>
                             <td class="py-4 px-6 text-center font-bold">
                                 @if($pro->pro_stockactual <= 0)
-                                    <span class="text-red-500">{{ $pro->pro_stockactual }} (Agotado)</span>
+                                    <span class="text-red-500">{{ \App\Support\Unidades::texto($pro->pro_stockactual, $pro->pro_unidad) }} (Agotado)</span>
                                 @elseif($pro->pro_stockactual <= $pro->pro_stockminimo)
-                                    <span class="text-orange-500">{{ $pro->pro_stockactual }} (Bajo)</span>
+                                    <span class="text-orange-500">{{ \App\Support\Unidades::texto($pro->pro_stockactual, $pro->pro_unidad) }} (Bajo)</span>
                                 @else
-                                    <span class="text-emerald-500">{{ $pro->pro_stockactual }} (Óptimo)</span>
+                                    <span class="text-emerald-500">{{ \App\Support\Unidades::texto($pro->pro_stockactual, $pro->pro_unidad) }} (Óptimo)</span>
                                 @endif
                             </td>
                             <td class="py-4 px-6 text-xs">
@@ -176,15 +181,33 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs uppercase text-gray-500">Se vende por</label>
+                        <select name="pro_unidad" x-model="pro_unidad" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2">
+                            @foreach($unidades as $codU => $nomU)<option value="{{ $codU }}">{{ $nomU }}{{ $codU === 'KG' ? ' (se puede vender en gramos)' : ($codU === 'LT' ? ' (se puede vender en mililitros)' : '') }}</option>@endforeach
+                        </select>
+                        <p class="text-[10px] text-gray-400 mt-1" x-show="fraccion">El precio, el costo y el stock son por kilo o por litro.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase text-gray-500">Código de balanza (PLU)</label>
+                        <input type="text" name="pro_plu" x-model="pro_plu" inputmode="numeric" maxlength="10" placeholder="Solo si se pesa en balanza" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase text-gray-500">Códigos de barra (uno por línea)</label>
+                        <textarea name="codigos_texto" x-model="codigos_texto" rows="2" placeholder="Escaneá o escribí el código" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2 text-sm"></textarea>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-xs uppercase text-gray-500">Stock Actual</label>
-                        <input type="number" step="0.01" min="0" name="pro_stockactual" x-model="pro_stockactual" :readonly="editMode" :disabled="editMode" :class="editMode ? 'bg-gray-100 cursor-not-allowed' : ''" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2">
+                        <input type="number" :step="fraccion ? 0.001 : 1" min="0" name="pro_stockactual" x-model="pro_stockactual" :readonly="editMode" :disabled="editMode" :class="editMode ? 'bg-gray-100 cursor-not-allowed' : ''" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2">
                         <p x-show="editMode" class="text-[10px] text-gray-400 mt-1">Se corrige en Inventario.</p>
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-gray-500">Stock Mínimo</label>
-                        <input type="number" name="pro_stockminimo" x-model="pro_stockminimo" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2" required>
+                        <input type="number" :step="fraccion ? 0.001 : 1" min="0" name="pro_stockminimo" x-model="pro_stockminimo" class="w-full rounded border-gray-300 dark:bg-gray-800 dark:text-white p-2" required>
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-gray-500">Vencimiento (Opcional)</label>

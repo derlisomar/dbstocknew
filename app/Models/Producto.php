@@ -17,8 +17,16 @@ protected $fillable = [
         'pro_stockminimo', 'pro_fechavencimiento', 'pro_imagen', 'pro_activo','pro_permite_mayorista',
         'pro_en_promocion',
         'pro_precio_promocional',
-        'pro_tipo_iva'
+        'pro_tipo_iva', 'pro_unidad', 'pro_plu'
     ];
+
+    // Con cantidades de 3 decimales PostgreSQL devuelve "180.000": se convierte para mostrarse como 180.
+    protected $casts = [
+        'pro_stockactual' => 'float',
+        'pro_stockminimo' => 'float',
+    ];
+
+    public function codigos() { return $this->hasMany(ProductoCodigo::class, 'pro_id', 'pro_id'); }
 
 // Relación para calcular las ventas de este producto
     public function detalle_ventas()

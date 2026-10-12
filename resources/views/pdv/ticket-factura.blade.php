@@ -47,7 +47,7 @@
             <td colspan="3" class="bold">{{ $det->producto->pro_codigo }} {{ $det->producto->pro_nombre }}</td>
         </tr>
         <tr>
-            <td>{{ $det->det_cantidad }}</td>
+            <td>{{ \App\Support\Unidades::texto($det->det_cantidad, $det->producto->pro_unidad ?? 'UN') }}</td>
             <td>{{ number_format($det->det_preciounitario, 0, ',', '.') }}</td>
             <td class="text-right">{{ number_format($det->det_subtotal, 0, ',', '.') }}</td>
         </tr>

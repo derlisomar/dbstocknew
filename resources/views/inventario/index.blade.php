@@ -44,12 +44,7 @@
         @csrf
         <div class="flex flex-col md:col-span-2">
             <label class="text-[10px] uppercase font-bold text-gray-500 mb-0.5">Producto</label>
-            <select name="pro_id" required class="{{ $campo }}">
-                <option value="">Elegí un producto</option>
-                @foreach($productos as $p)
-                    <option value="{{ $p->pro_id }}" @selected((string) old('pro_id') === (string) $p->pro_id)>{{ $p->pro_codigo }} - {{ $p->pro_nombre }} (stock {{ (float) $p->pro_stockactual }})</option>
-                @endforeach
-            </select>
+            @include('partials.buscador-producto', ['name' => 'pro_id', 'lista' => $productos, 'valor' => old('pro_id'), 'requerido' => true, 'todos' => false, 'campo' => $campo])
         </div>
         <div class="flex flex-col">
             <label class="text-[10px] uppercase font-bold text-gray-500 mb-0.5">Tipo</label>
@@ -61,7 +56,7 @@
         </div>
         <div class="flex flex-col">
             <label class="text-[10px] uppercase font-bold text-gray-500 mb-0.5">Cantidad (en conteo: lo contado)</label>
-            <input type="number" name="cantidad" step="0.01" min="0" required value="{{ old('cantidad') }}" class="{{ $campo }}">
+            <input type="number" name="cantidad" step="0.001" min="0" required value="{{ old('cantidad') }}" class="{{ $campo }}">
         </div>
         <div class="flex flex-col">
             <label class="text-[10px] uppercase font-bold text-gray-500 mb-0.5">Motivo</label>
@@ -76,12 +71,7 @@
     <form method="GET" action="{{ route('inventario.index') }}" class="grid grid-cols-1 md:grid-cols-6 gap-3 bg-white dark:bg-[#1c2434] border border-gray-200 dark:border-gray-800 rounded-lg p-4">
         <div class="flex flex-col">
             <label class="text-[10px] uppercase font-bold text-gray-500 mb-0.5">Producto</label>
-            <select name="producto" class="{{ $campo }}">
-                <option value="">Todos</option>
-                @foreach($productos as $p)
-                    <option value="{{ $p->pro_id }}" @selected((string) request('producto') === (string) $p->pro_id)>{{ $p->pro_nombre }}</option>
-                @endforeach
-            </select>
+            @include('partials.buscador-producto', ['name' => 'producto', 'lista' => $productos, 'valor' => request('producto'), 'requerido' => false, 'todos' => true, 'campo' => $campo])
         </div>
         <div class="flex flex-col">
             <label class="text-[10px] uppercase font-bold text-gray-500 mb-0.5">Tipo</label>

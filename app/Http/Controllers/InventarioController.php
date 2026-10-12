@@ -40,7 +40,7 @@ class InventarioController extends Controller
 
         return view('inventario.index', [
             'movimientos' => $consulta->paginate(40)->withQueryString(),
-            'productos' => Producto::orderBy('pro_nombre')->get(['pro_id', 'pro_codigo', 'pro_nombre', 'pro_stockactual']),
+            'productos' => Producto::with('codigos:cod_id,pro_id,cod_codigo')->orderBy('pro_nombre')->get(['pro_id', 'pro_codigo', 'pro_nombre', 'pro_stockactual']),
             'usuarios' => User::orderBy('usu_usuario')->get(['usu_id', 'usu_usuario']),
             'tipos' => StockService::TIPOS,
             'tiposManuales' => StockService::TIPOS_MANUALES,

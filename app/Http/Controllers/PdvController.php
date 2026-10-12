@@ -12,7 +12,9 @@ use App\Models\Presupuesto;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\Venta;
+use App\Services\Balanza;
 use App\Services\CajaService;
+use App\Support\Unidades;
 use App\Services\PrecioService;
 use App\Services\PresupuestoService;
 use App\Services\StockService;
@@ -28,7 +30,7 @@ class PdvController extends Controller
     public function index(PrecioService $precios)
     {
         // El costo de compra no se envía al navegador del cajero.
-        $productos = Producto::where('pro_activo', true)->get()->makeHidden(['pro_preciocosto']);
+        $productos = Producto::with('codigos:cod_id,pro_id,cod_codigo')->where('pro_activo', true)->get()->makeHidden(['pro_preciocosto']);
         $clientes = Cliente::all();
 
         $activa = Cotizacion::where('cot_activa', true)->first();
@@ -46,7 +48,12 @@ class PdvController extends Controller
             $producto->en_promocion = $precioPromo !== null;
             $producto->precio_promocional = $precioPromo ?? (float) $producto->pro_precioventa;
             $producto->pro_preciomayorista = (float) $producto->pro_preciomayorista;
+            $producto->pro_unidad = Unidades::normalizar($producto->pro_unidad);
+            $producto->barras = $producto->codigos->pluck('cod_codigo')->values();
+            $producto->unsetRelation('codigos');
         }
+
+        $unidades = Unidades::paraPantalla();
 
         // Si viene de un presupuesto (/pdv?presupuesto=ID) se precargan cliente y productos.
         // Los precios se vuelven a calcular con las reglas vigentes; el stock se controla al cobrar.
@@ -72,7 +79,7 @@ class PdvController extends Controller
             }
         }
 
-        return view('pdv.index', compact('productos', 'clientes', 'cotizaciones', 'precarga'));
+        return view('pdv.index', compact('productos', 'clientes', 'cotizaciones', 'precarga', 'unidades'));
     }
 
     public function store(Request $request, PrecioService $precios, CajaService $cajas, StockService $stock, PresupuestoService $presupuestos)
@@ -176,12 +183,17 @@ class PdvController extends Controller
                         throw new NegocioException('Uno de los productos del carrito ya no está disponible. Actualizá la pantalla e intentá de nuevo.');
                     }
 
+                    if (! Unidades::cantidadValida($producto->pro_unidad, $cantidad)) {
+                        $nombreUnidad = mb_strtolower(Unidades::nombres()[Unidades::normalizar($producto->pro_unidad)]);
+                        throw new NegocioException("«{$producto->pro_nombre}» se vende por {$nombreUnidad}: ".(Unidades::esFraccionable($producto->pro_unidad) ? 'la cantidad admite hasta 3 decimales.' : 'la cantidad tiene que ser un número entero.'));
+                    }
+
                     if ($producto->pro_stockactual < $cantidad) {
                         throw new NegocioException("Stock insuficiente de «{$producto->pro_nombre}»: disponible {$producto->pro_stockactual}, pedido {$cantidad}.");
                     }
 
                     $precio = $precios->precioFinal($producto, $esMayorista, $promociones);
-                    $subtotal = round($precio * $cantidad, 2);
+                    $subtotal = Unidades::importe($precio, $cantidad, $producto->pro_unidad);
                     $totalGs += $subtotal;
 
                     $lineas[] = [
@@ -363,7 +375,7 @@ class PdvController extends Controller
         $request->validate([
             'cli_ruc_ci' => 'required|string|max:30|unique:clientes,cli_ruc_ci',
             'cli_nombre' => 'required|string|max:100',
-            'cli_apellido' => 'required|string|max:100',
+            'cli_apellido' => 'nullable|string|max:100',
             'cli_telefono' => 'required|string|max:30',
             'cli_email' => 'required|email|max:100',
             'cli_direccion' => 'required|string',
@@ -434,5 +446,26 @@ class PdvController extends Controller
         );
 
         return $venta;
+    }
+
+    /**
+     * Lo que lee el lector de códigos: etiqueta de balanza o código de barras de un producto.
+     * Devuelve el producto y, si es etiqueta de balanza, la cantidad que lleva adentro.
+     */
+    public function buscarCodigo(Request $request)
+    {
+        $codigo = trim((string) $request->query('codigo', ''));
+        $r = Balanza::resolver($codigo);
+
+        if (! $r) {
+            return response()->json(['ok' => false, 'mensaje' => 'Código no registrado: '.mb_substr($codigo, 0, 40)], 404);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'tipo' => $r['tipo'],
+            'pro_id' => (int) $r['producto']->pro_id,
+            'cantidad' => $r['cantidad'],
+        ]);
     }
 }

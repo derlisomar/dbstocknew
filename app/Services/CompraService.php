@@ -170,7 +170,7 @@ class CompraService
 
             // 1. La mercadería sale del stock (lo ya devuelto al proveedor no se saca dos veces).
             foreach ($detalles as $det) {
-                $resta = round((float) $det->dco_cantidad - (float) $det->dco_devuelta, 2);
+                $resta = round((float) $det->dco_cantidad - (float) $det->dco_devuelta, 3);
                 if ($resta <= 0) {
                     continue;
                 }
@@ -237,7 +237,7 @@ class CompraService
                     throw new NegocioException('Una de las líneas no pertenece a esta compra.');
                 }
 
-                $disponible = round((float) $det->dco_cantidad - (float) $det->dco_devuelta, 2);
+                $disponible = round((float) $det->dco_cantidad - (float) $det->dco_devuelta, 3);
                 if ($cantidad > $disponible + 0.0001) {
                     throw new NegocioException('No se puede devolver más de lo que se compró (quedan '.$disponible.' por devolver).');
                 }
@@ -247,7 +247,7 @@ class CompraService
                     'Devolución al proveedor, compra Nro '.$compra->com_id.($motivo ? ': '.$motivo : ''), 'compra:'.$compra->com_id
                 );
 
-                $det->update(['dco_devuelta' => round((float) $det->dco_devuelta + $cantidad, 2)]);
+                $det->update(['dco_devuelta' => round((float) $det->dco_devuelta + $cantidad, 3)]);
                 $valor += round($cantidad * (float) $det->dco_costo, 2);
             }
             $valor = round($valor, 2);
@@ -281,7 +281,7 @@ class CompraService
         $lineas = [];
         foreach ($items as $i) {
             $proId = (int) ($i['pro_id'] ?? 0);
-            $cant = round((float) ($i['cantidad'] ?? 0), 2);
+            $cant = round((float) ($i['cantidad'] ?? 0), 3);
             $costo = round((float) ($i['costo'] ?? 0), 2);
 
             if ($proId <= 0) {

@@ -55,14 +55,14 @@
         <form action="{{ route('operaciones.ventas') }}" method="GET" class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
             <div class="md:col-span-2">
                 <label class="block text-xs uppercase font-semibold text-gray-500 mb-1">Filtrar por Cliente</label>
-                <select name="cli_id" class="w-full rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 py-2.5 px-3 text-sm text-gray-800 dark:text-white outline-none">
-                    <option value="">-- Todos los Clientes --</option>
-                    @foreach($clientes as $cli)
-                        <option value="{{ $cli->cli_id }}" {{ request('cli_id') == $cli->cli_id ? 'selected' : '' }}>
-                            {{ $cli->cli_ruc_ci }} - {{ $cli->cli_nombre }} {{ $cli->cli_apellido }}
-                        </option>
-                    @endforeach
-                </select>
+                @php
+                    $itemsCli = $clientes->map(fn ($c) => [
+                        'id' => $c->cli_id,
+                        'texto' => trim($c->cli_ruc_ci.' - '.$c->cli_nombre.' '.$c->cli_apellido),
+                        'buscar' => mb_strtolower($c->cli_ruc_ci.' '.$c->cli_nombre.' '.$c->cli_apellido),
+                    ])->values()->all();
+                @endphp
+                @include('partials.buscador-lista', ['name' => 'cli_id', 'items' => $itemsCli, 'valor' => request('cli_id'), 'requerido' => false, 'todos' => '-- Todos los Clientes --', 'campo' => 'w-full rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 py-2.5 px-3 text-sm text-gray-800 dark:text-white outline-none'])
             </div>
             
             <!-- Fecha de Inicio con valor por defecto del mes actual -->
@@ -208,10 +208,10 @@
                         <template x-for="det in ventaSeleccionada?.detalles" :key="det.det_vta_id">
                             <tr>
                                 <td class="py-2.5 px-3 font-bold" x-text="det.producto?.pro_name || det.producto?.pro_nombre || 'Producto #' + det.pro_id"></td>
-                                <td class="py-2.5 px-3 text-center font-semibold" x-text="det.det_cantidad + ' unid.'"></td>
+                                <td class="py-2.5 px-3 text-center font-semibold" x-text="det.det_cantidad + ' ' + (det.producto?.pro_unidad === 'KG' ? 'kg' : (det.producto?.pro_unidad === 'LT' ? 'L' : 'unid.'))"></td>
                                 <td class="py-2.5 px-3 text-right" x-text="'Gs. ' + Number(det.det_preciounitario).toLocaleString('es-PY')"></td>
                                 <td class="py-2.5 px-3 text-center">
-                                    <input type="number" min="0" :max="det.det_cantidad" x-model.number="devolucionesItems[det.det_vta_id]" :name="'items[' + det.det_vta_id + ']'" class="w-20 text-center py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-bold text-gray-800 dark:text-white">
+                                    <input type="number" min="0" step="any" :max="det.det_cantidad" x-model.number="devolucionesItems[det.det_vta_id]" :name="'items[' + det.det_vta_id + ']'" class="w-20 text-center py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-bold text-gray-800 dark:text-white">
                                 </td>
                             </tr>
                         </template>
