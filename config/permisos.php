@@ -31,6 +31,7 @@ return [
         'CONFIG_GESTIONAR'    => ['modulo' => 'CONFIGURACION', 'descripcion' => 'Sucursales, cajas, depósitos, cotización y terminal'],
         'CATALOGO_GESTIONAR'  => ['modulo' => 'CATALOGO',      'descripcion' => 'Productos, categorías, proveedores y promociones'],
         'CLIENTES_GESTIONAR'  => ['modulo' => 'CLIENTES',      'descripcion' => 'Alta, edición y baja de clientes'],
+        'PADRON_GESTIONAR'    => ['modulo' => 'CLIENTES',      'descripcion' => 'Importar, editar y eliminar registros del padrón de RUC (la consulta al cargar clientes no lo necesita)'],
         'CLIENTES_CREDITO'    => ['modulo' => 'CLIENTES',      'descripcion' => 'Habilitar crédito, fijar límite, marcar mayorista y bloquear clientes'],
         'PDV_USAR'            => ['modulo' => 'VENTAS',        'descripcion' => 'Vender en el punto de venta'],
         'VENTAS_HISTORIAL'    => ['modulo' => 'VENTAS',        'descripcion' => 'Ver y exportar el historial de ventas'],
@@ -52,6 +53,14 @@ return [
         'CONTABILIDAD_VER'    => ['modulo' => 'CONTABILIDAD',  'descripcion' => 'Ver libro diario, mayor, balances y libro IVA'],
         'CONTABILIDAD_GESTIONAR' => ['modulo' => 'CONTABILIDAD', 'descripcion' => 'Plan de cuentas, mapeos, asientos manuales de ajuste y cierre de períodos'],
         'REPORTES_VER'        => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes (rentabilidad / curva ABC)'],
+        'REPORTES_VENTAS'     => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes de ventas (por período, cajero, forma de pago, categoría, horas pico, anulaciones)'],
+        'REPORTES_STOCK'      => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes de stock (valorizado, reposición, vencimientos, kardex, ajustes)'],
+        'REPORTES_CARTERA'    => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes de clientes y cartera (cuentas por cobrar, cobranzas, mejores clientes, límites de crédito)'],
+        'REPORTES_COMPRAS'    => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes de compras y proveedores (compras, cuentas por pagar, pagos, evolución de costos)'],
+        'REPORTES_CAJA'       => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes de caja y finanzas (cierres, faltantes y sobrantes, flujo de caja)'],
+        'REPORTES_FISCAL'     => ['modulo' => 'REPORTES',      'descripcion' => 'Ver reportes fiscales (libros de IVA, resumen de IVA, facturas por timbrado, numeración, vigencia de timbrados)'],
+        'REPORTES_COSTOS'     => ['modulo' => 'REPORTES',      'descripcion' => 'Ver costos, utilidades y márgenes dentro de los reportes'],
+        'REPORTES_EXPORTAR'   => ['modulo' => 'REPORTES',      'descripcion' => 'Descargar reportes en Excel y PDF'],
     ],
 
     /*
@@ -81,11 +90,11 @@ return [
         ],
         'Encargado de stock' => [
             'descripcion' => 'Carga productos, recibe mercadería, registra compras y ajusta el stock.',
-            'permisos' => ['CATALOGO_GESTIONAR', 'STOCK_AJUSTAR', 'COMPRAS_REGISTRAR'],
+            'permisos' => ['CATALOGO_GESTIONAR', 'STOCK_AJUSTAR', 'COMPRAS_REGISTRAR', 'REPORTES_STOCK', 'REPORTES_COMPRAS', 'REPORTES_EXPORTAR'],
         ],
         'Contador' => [
             'descripcion' => 'Contabilidad, libro IVA y reportes. Ve las ventas y la caja, pero no vende ni cobra.',
-            'permisos' => ['CONTABILIDAD_VER', 'CONTABILIDAD_GESTIONAR', 'REPORTES_VER', 'FINANZAS_VER', 'VENTAS_HISTORIAL', 'AUDITORIA_VER'],
+            'permisos' => ['CONTABILIDAD_VER', 'CONTABILIDAD_GESTIONAR', 'REPORTES_VER', 'REPORTES_VENTAS', 'REPORTES_STOCK', 'REPORTES_CARTERA', 'REPORTES_COMPRAS', 'REPORTES_CAJA', 'REPORTES_FISCAL', 'REPORTES_COSTOS', 'REPORTES_EXPORTAR', 'FINANZAS_VER', 'PAGOS_PROVEEDORES', 'VENTAS_HISTORIAL', 'AUDITORIA_VER'],
         ],
     ],
 

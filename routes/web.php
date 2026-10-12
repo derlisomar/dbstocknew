@@ -9,7 +9,6 @@ use App\Http\Controllers\CajaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobranzaController;
-use App\Http\Controllers\ControlProductoController;
 use App\Http\Controllers\CotizacionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepositoController;
@@ -134,19 +133,17 @@ Route::middleware(['auth', 'licencia'])->group(function () {
         Route::resource('proveedores', ProveedorController::class)->middleware('modulo:compras');
         Route::resource('promociones', PromocionController::class)->middleware('modulo:promociones');
         Route::post('promociones/toggle/{id}', [PromocionController::class, 'toggleEstado'])->middleware('modulo:promociones')->name('promociones.toggle');
-        Route::get('/operaciones/productos-control', [ControlProductoController::class, 'index'])->name('productos.control');
-        Route::post('/operaciones/productos-control/toggle/{id}', [ControlProductoController::class, 'toggleEstado']);
     });
 
     // ---------------------------------------------------------------- Clientes
     Route::get('/padron/ruc', [\App\Http\Controllers\PadronController::class, 'buscar'])->middleware('permiso:PDV_USAR,CLIENTES_GESTIONAR')->name('padron.ruc');
-    Route::middleware('permiso:CLIENTES_GESTIONAR')->prefix('padron-ruc')->name('padron.registros.')->group(function () {
+    Route::middleware('permiso:PADRON_GESTIONAR')->prefix('padron-ruc')->name('padron.registros.')->group(function () {
         Route::get('/', [\App\Http\Controllers\PadronRegistroController::class, 'index'])->name('index');
         Route::post('/', [\App\Http\Controllers\PadronRegistroController::class, 'store'])->name('store');
         Route::put('/{ruc}', [\App\Http\Controllers\PadronRegistroController::class, 'update'])->where('ruc', '[0-9A-Za-z]+')->name('update');
         Route::delete('/{ruc}', [\App\Http\Controllers\PadronRegistroController::class, 'destroy'])->where('ruc', '[0-9A-Za-z]+')->name('destroy');
     });
-    Route::post('/clientes/padron/importar', [\App\Http\Controllers\PadronController::class, 'importar'])->middleware('permiso:CLIENTES_GESTIONAR')->name('padron.importar');
+    Route::post('/clientes/padron/importar', [\App\Http\Controllers\PadronController::class, 'importar'])->middleware('permiso:PADRON_GESTIONAR')->name('padron.importar');
     Route::resource('clientes', ClienteController::class)->middleware('permiso:CLIENTES_GESTIONAR');
 
     Route::middleware(['permiso:CLIENTES_CREDITO', 'modulo:cobranzas'])->group(function () {
@@ -245,6 +242,14 @@ Route::middleware(['auth', 'licencia'])->group(function () {
     });
 
     // ---------------------------------------------------------------- Reportes
+    // Centro de reportes (pantalla + Excel + PDF). Cada reporte exige el permiso de su área.
+    Route::middleware(['permiso:REPORTES_VENTAS,REPORTES_STOCK,REPORTES_CARTERA,REPORTES_COMPRAS,REPORTES_CAJA,REPORTES_FISCAL', 'modulo:reportes_avanzados'])->prefix('reportes')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ReporteController::class, 'index'])->name('reportes.index');
+        Route::get('/{clave}/xlsx', [\App\Http\Controllers\ReporteController::class, 'xlsx'])->where('clave', '[a-z_]+')->name('reportes.xlsx');
+        Route::get('/{clave}/pdf', [\App\Http\Controllers\ReporteController::class, 'pdf'])->where('clave', '[a-z_]+')->name('reportes.pdf');
+        Route::get('/{clave}', [\App\Http\Controllers\ReporteController::class, 'ver'])->where('clave', '[a-z_]+')->name('reportes.ver');
+    });
+
     Route::middleware(['permiso:REPORTES_VER', 'modulo:reportes_avanzados'])->group(function () {
         Route::get('/operaciones/reporte-abc', [ReporteRentabilidadController::class, 'index'])->name('operaciones.reporte_abc');
         Route::get('/operaciones/reporte-abc/excel', [ReporteRentabilidadController::class, 'exportarExcel'])->name('operaciones.reporte_abc.excel');

@@ -1,5 +1,5 @@
 -- dbstock: base de datos INICIAL lista para usar (PostgreSQL 12 o superior).
--- Incluye estructura completa (con unidades, códigos de barra y balanza) y los datos de arranque:
+-- Incluye estructura completa (con unidades, códigos de barra, balanza, padrón de RUC y permisos del Centro de Reportes) y los datos de arranque:
 -- permisos, roles (Administrador, Gerente, Cajero, Vendedor, Encargado de stock, Contador), planes y adicionales,
 -- sucursal "Casa Central" con depósito y caja, y una categoría. NO incluye usuarios, productos ni clientes.
 --
@@ -7,6 +7,7 @@
 --        psql -U postgres -d dbStockNew -f dbstock_inicial.sql
 --        psql -U postgres -d dbStockNew -f crear_administrador.sql      (crea el usuario administrador)
 -- Luego poné los datos de la base en el .env (DB_DATABASE, DB_USERNAME, DB_PASSWORD) y php artisan optimize:clear.
+--
 --
 -- PostgreSQL database dump
 --
@@ -1109,6 +1110,18 @@ CREATE SEQUENCE public.migrations_id_seq
 --
 
 ALTER SEQUENCE public.migrations_id_seq OWNED BY public.migrations.id;
+
+
+--
+-- Name: padron_ruc; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.padron_ruc (
+    pad_ruc character varying(15) NOT NULL,
+    pad_dv character varying(2),
+    pad_nombre character varying(255) NOT NULL,
+    pad_estado character varying(40)
+);
 
 
 --
@@ -2308,7 +2321,19 @@ COPY public.migrations (id, migration, batch) FROM stdin;
 14	2026_10_19_000001_parte12_roles_base	1
 15	2026_10_20_000001_parte13_demo_detalle	1
 16	2026_10_21_000001_parte14_unidades_y_codigos	1
-17	2026_10_18_000001_parte11_planes_definitivos	2
+17	2026_10_22_000001_parte15_padron_ruc	2
+18	2026_10_18_000001_parte11_planes_definitivos	3
+19	2026_10_23_000001_parte16_permisos_reportes	4
+20	2026_10_24_000001_parte17_permisos_reportes_compras_caja	5
+21	2026_10_25_000001_parte18_permisos_reportes_fiscal	6
+\.
+
+
+--
+-- Data for Name: padron_ruc; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.padron_ruc (pad_ruc, pad_dv, pad_nombre, pad_estado) FROM stdin;
 \.
 
 
@@ -2337,27 +2362,36 @@ COPY public.permisos (perm_id, perm_codigo, perm_descripcion, perm_modulo) FROM 
 2	CONFIG_GESTIONAR	Sucursales, cajas, depósitos, cotización y terminal	CONFIGURACION
 3	CATALOGO_GESTIONAR	Productos, categorías, proveedores y promociones	CATALOGO
 4	CLIENTES_GESTIONAR	Alta, edición y baja de clientes	CLIENTES
-5	CLIENTES_CREDITO	Habilitar crédito, fijar límite, marcar mayorista y bloquear clientes	CLIENTES
-6	PDV_USAR	Vender en el punto de venta	VENTAS
-7	VENTAS_HISTORIAL	Ver y exportar el historial de ventas	VENTAS
-8	VENTAS_ANULAR	Anular ventas	VENTAS
-9	VENTAS_DEVOLVER	Procesar devoluciones de ventas	VENTAS
-10	COBRANZAS_ANULAR	Anular cobros ya registrados (devuelve la deuda al cliente)	COBRANZAS
-11	COBRANZAS_REGISTRAR	Cobrar cuentas a crédito	COBRANZAS
-12	CAJA_ABRIR_CERRAR	Abrir y cerrar caja	FINANZAS
-13	CAJA_TRANSFERIR	Transferir dinero entre cajas	FINANZAS
-14	CAJA_INGRESO_EGRESO	Registrar ingresos y egresos extra de caja	FINANZAS
-15	FINANZAS_VER	Ver movimientos, cierres e ingresos/egresos	FINANZAS
-16	CAJA_OPERAR_AJENA	Cerrar, transferir y registrar movimientos en cajas abiertas por otra persona (responsable)	FINANZAS
-17	AUDITORIA_VER	Ver el registro de auditoría (quién hizo qué)	AUDITORIA
-18	STOCK_AJUSTAR	Ajustar stock, ingresar mercadería y hacer conteos (queda en el historial)	CATALOGO
-19	COMPRAS_REGISTRAR	Registrar compras a proveedores y ver el listado de compras	COMPRAS
-20	COMPRAS_ANULAR	Anular compras y devolver mercadería al proveedor	COMPRAS
-21	PAGOS_PROVEEDORES	Ver cuentas a pagar y registrar o anular pagos a proveedores	COMPRAS
-22	PRESUPUESTOS_GESTIONAR	Crear, editar, aceptar, rechazar y renovar presupuestos (quien vende en caja puede verlos y convertirlos en venta)	VENTAS
-23	CONTABILIDAD_VER	Ver libro diario, mayor, balances y libro IVA	CONTABILIDAD
-24	CONTABILIDAD_GESTIONAR	Plan de cuentas, mapeos, asientos manuales de ajuste y cierre de períodos	CONTABILIDAD
-25	REPORTES_VER	Ver reportes (rentabilidad / curva ABC)	REPORTES
+5	PADRON_GESTIONAR	Importar, editar y eliminar registros del padrón de RUC (la consulta al cargar clientes no lo necesita)	CLIENTES
+6	CLIENTES_CREDITO	Habilitar crédito, fijar límite, marcar mayorista y bloquear clientes	CLIENTES
+7	PDV_USAR	Vender en el punto de venta	VENTAS
+8	VENTAS_HISTORIAL	Ver y exportar el historial de ventas	VENTAS
+9	VENTAS_ANULAR	Anular ventas	VENTAS
+10	VENTAS_DEVOLVER	Procesar devoluciones de ventas	VENTAS
+11	COBRANZAS_ANULAR	Anular cobros ya registrados (devuelve la deuda al cliente)	COBRANZAS
+12	COBRANZAS_REGISTRAR	Cobrar cuentas a crédito	COBRANZAS
+13	CAJA_ABRIR_CERRAR	Abrir y cerrar caja	FINANZAS
+14	CAJA_TRANSFERIR	Transferir dinero entre cajas	FINANZAS
+15	CAJA_INGRESO_EGRESO	Registrar ingresos y egresos extra de caja	FINANZAS
+16	FINANZAS_VER	Ver movimientos, cierres e ingresos/egresos	FINANZAS
+17	CAJA_OPERAR_AJENA	Cerrar, transferir y registrar movimientos en cajas abiertas por otra persona (responsable)	FINANZAS
+18	AUDITORIA_VER	Ver el registro de auditoría (quién hizo qué)	AUDITORIA
+19	STOCK_AJUSTAR	Ajustar stock, ingresar mercadería y hacer conteos (queda en el historial)	CATALOGO
+20	COMPRAS_REGISTRAR	Registrar compras a proveedores y ver el listado de compras	COMPRAS
+21	COMPRAS_ANULAR	Anular compras y devolver mercadería al proveedor	COMPRAS
+22	PAGOS_PROVEEDORES	Ver cuentas a pagar y registrar o anular pagos a proveedores	COMPRAS
+23	PRESUPUESTOS_GESTIONAR	Crear, editar, aceptar, rechazar y renovar presupuestos (quien vende en caja puede verlos y convertirlos en venta)	VENTAS
+24	CONTABILIDAD_VER	Ver libro diario, mayor, balances y libro IVA	CONTABILIDAD
+25	CONTABILIDAD_GESTIONAR	Plan de cuentas, mapeos, asientos manuales de ajuste y cierre de períodos	CONTABILIDAD
+26	REPORTES_VER	Ver reportes (rentabilidad / curva ABC)	REPORTES
+27	REPORTES_VENTAS	Ver reportes de ventas (por período, cajero, forma de pago, categoría, horas pico, anulaciones)	REPORTES
+28	REPORTES_STOCK	Ver reportes de stock (valorizado, reposición, vencimientos, kardex, ajustes)	REPORTES
+29	REPORTES_CARTERA	Ver reportes de clientes y cartera (cuentas por cobrar, cobranzas, mejores clientes, límites de crédito)	REPORTES
+30	REPORTES_COSTOS	Ver costos, utilidades y márgenes dentro de los reportes	REPORTES
+31	REPORTES_EXPORTAR	Descargar reportes en Excel y PDF	REPORTES
+32	REPORTES_COMPRAS	Ver reportes de compras y proveedores (compras, cuentas por pagar, pagos, evolución de costos)	REPORTES
+33	REPORTES_CAJA	Ver reportes de caja y finanzas (cierres, faltantes y sobrantes, flujo de caja)	REPORTES
+34	REPORTES_FISCAL	Ver reportes fiscales (libros de IVA, resumen de IVA, facturas por timbrado, numeración, vigencia de timbrados)	REPORTES
 \.
 
 
@@ -2451,25 +2485,46 @@ COPY public.rol_permisos (rol_id, perm_id) FROM stdin;
 2	21
 2	22
 2	23
-2	25
+2	24
+2	26
 3	4
-3	6
 3	7
-3	11
+3	8
 3	12
-3	14
-3	22
+3	13
+3	15
+3	23
 4	4
-4	22
+4	23
 5	3
-5	18
 5	19
-6	7
-6	15
-6	17
-6	23
+5	20
+6	8
+6	16
+6	18
+6	22
 6	24
 6	25
+6	26
+2	27
+2	28
+2	29
+2	30
+2	31
+6	27
+6	28
+6	29
+6	30
+6	31
+5	28
+5	31
+2	32
+2	33
+6	32
+6	33
+5	32
+2	34
+6	34
 \.
 
 
@@ -2478,12 +2533,12 @@ COPY public.rol_permisos (rol_id, perm_id) FROM stdin;
 --
 
 COPY public.roles (rol_id, rol_nombre, rol_descripcion, creado_en) FROM stdin;
-1	Administrador	Acceso total al sistema	2026-10-12 11:41:33.925278
-2	Gerente	Supervisa todo el negocio: ventas, caja, compras, reportes y auditoría. No administra usuarios ni configuración.	2026-10-12 11:41:33.95513
-3	Cajero	Vende y cobra en el punto de venta, abre y cierra su caja y cobra cuentas a crédito.	2026-10-12 11:41:33.994782
-4	Vendedor	Atiende clientes y arma presupuestos. No maneja dinero: el cajero los convierte en venta y cobra.	2026-10-12 11:41:34.00712
-5	Encargado de stock	Carga productos, recibe mercadería, registra compras y ajusta el stock.	2026-10-12 11:41:34.011292
-6	Contador	Contabilidad, libro IVA y reportes. Ve las ventas y la caja, pero no vende ni cobra.	2026-10-12 11:41:34.017258
+1	Administrador	Acceso total al sistema	2026-10-12 13:14:35.568989
+2	Gerente	Supervisa todo el negocio: ventas, caja, compras, reportes y auditoría. No administra usuarios ni configuración.	2026-10-12 13:14:35.593841
+3	Cajero	Vende y cobra en el punto de venta, abre y cierra su caja y cobra cuentas a crédito.	2026-10-12 13:14:35.631518
+4	Vendedor	Atiende clientes y arma presupuestos. No maneja dinero: el cajero los convierte en venta y cobra.	2026-10-12 13:14:35.641157
+5	Encargado de stock	Carga productos, recibe mercadería, registra compras y ajusta el stock.	2026-10-12 13:14:35.646323
+6	Contador	Contabilidad, libro IVA y reportes. Ve las ventas y la caja, pero no vende ni cobra.	2026-10-12 13:14:35.65223
 \.
 
 
@@ -2517,6 +2572,14 @@ COPY public.sucursales (suc_id, suc_nombre, suc_direccion, suc_telefono, suc_act
 --
 
 COPY public.users (id, name, email, email_verified_at, password, remember_token, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.usuarios (usu_id, rol_id, usu_cedula, usu_nombre, usu_apellido, usu_usuario, usu_password, usu_activo, creado_en, usu_email) FROM stdin;
 \.
 
 
@@ -2721,7 +2784,7 @@ SELECT pg_catalog.setval('public.licencia_pagos_lpa_id_seq', 1, false);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 17, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 21, true);
 
 
 --
@@ -2735,7 +2798,7 @@ SELECT pg_catalog.setval('public.pagos_proveedores_pag_id_seq', 1, false);
 -- Name: permisos_perm_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.permisos_perm_id_seq', 25, true);
+SELECT pg_catalog.setval('public.permisos_perm_id_seq', 34, true);
 
 
 --
@@ -3150,6 +3213,14 @@ ALTER TABLE ONLY public.migrations
 
 
 --
+-- Name: padron_ruc padron_ruc_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.padron_ruc
+    ADD CONSTRAINT padron_ruc_pkey PRIMARY KEY (pad_ruc);
+
+
+--
 -- Name: pagos_proveedores pagos_proveedores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3546,6 +3617,13 @@ CREATE INDEX idx_cuentas_cobrar_estado ON public.cuentas_cobrar USING btree (cre
 --
 
 CREATE INDEX idx_cuentas_cobrar_vencimiento ON public.cuentas_cobrar USING btree (cred_fecha_vencimiento);
+
+
+--
+-- Name: idx_padron_ruc_prefijo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_padron_ruc_prefijo ON public.padron_ruc USING btree (pad_ruc varchar_pattern_ops);
 
 
 --

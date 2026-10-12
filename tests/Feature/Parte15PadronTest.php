@@ -94,8 +94,9 @@ class Parte15PadronTest extends TestCase
     public function test_importa_desde_la_pantalla_de_clientes(): void
     {
         $rolId = DB::table('roles')->insertGetId(['rol_nombre' => 'Gestor'], 'rol_id');
-        $permId = DB::table('permisos')->insertGetId(['perm_codigo' => 'CLIENTES_GESTIONAR'], 'perm_id');
-        DB::table('rol_permisos')->insert(['rol_id' => $rolId, 'perm_id' => $permId]);
+        $permId = DB::table('permisos')->insertGetId(['perm_codigo' => 'PADRON_GESTIONAR'], 'perm_id');
+        $permCli = DB::table('permisos')->insertGetId(['perm_codigo' => 'CLIENTES_GESTIONAR'], 'perm_id');
+        DB::table('rol_permisos')->insert([['rol_id' => $rolId, 'perm_id' => $permId], ['rol_id' => $rolId, 'perm_id' => $permCli]]);
         $u = User::create(['rol_id' => $rolId, 'usu_nombre' => 'G', 'usu_usuario' => 'g', 'usu_email' => 'g@x.com', 'usu_password' => Hash::make('x'), 'usu_activo' => true]);
 
         $f = \Illuminate\Http\UploadedFile::fake()->createWithContent('ruc0.txt', "1037415|PEREZ, JUAN|9||ACTIVO\n2966368|58XCAR|7||CANCELADO\n");
@@ -114,7 +115,7 @@ class Parte15PadronTest extends TestCase
     private function gestor(): User
     {
         $rolId = DB::table('roles')->insertGetId(['rol_nombre' => 'Gestor2'], 'rol_id');
-        $permId = DB::table('permisos')->insertGetId(['perm_codigo' => 'CLIENTES_GESTIONAR'], 'perm_id');
+        $permId = DB::table('permisos')->insertGetId(['perm_codigo' => 'PADRON_GESTIONAR'], 'perm_id');
         DB::table('rol_permisos')->insert(['rol_id' => $rolId, 'perm_id' => $permId]);
 
         return User::create(['rol_id' => $rolId, 'usu_nombre' => 'G2', 'usu_usuario' => 'g2', 'usu_email' => 'g2@x.com', 'usu_password' => Hash::make('x'), 'usu_activo' => true]);

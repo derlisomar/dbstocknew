@@ -67,12 +67,14 @@
                             @php $color = match($r->pad_estado) { 'ACTIVO' => 'bg-emerald-100 text-emerald-700', 'SUSPENSION TEMPORAL' => 'bg-amber-100 text-amber-700', 'CANCELADO', 'BLOQUEADO' => 'bg-red-100 text-red-700', default => 'bg-gray-100 text-gray-600' }; @endphp
                             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {{ $color }}">{{ $r->pad_estado ?? '—' }}</span>
                         </td>
-                        <td class="py-3 px-5 text-center whitespace-nowrap">
+                        <td class="py-3 px-5">
+                          <div class="flex flex-row items-center justify-center gap-2">
                             <button type="button" @click="editar(@js($r->only('pad_ruc', 'pad_dv', 'pad_nombre', 'pad_estado')))" class="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100" title="Editar">✏️</button>
-                            <form method="POST" action="{{ route('padron.registros.destroy', $r->pad_ruc) }}" class="inline" onsubmit="return confirm('¿Eliminar este RUC del padrón?')">
+                            <form method="POST" action="{{ route('padron.registros.destroy', $r->pad_ruc) }}" class="m-0 inline-flex" onsubmit="return confirm('¿Eliminar este RUC del padrón?')">
                                 @csrf @method('DELETE')
                                 <button class="px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" title="Eliminar">✖</button>
                             </form>
+                          </div>
                         </td>
                     </tr>
                 @empty

@@ -88,8 +88,8 @@
     @endmodulo
 
     <!-- 3. Operaciones (Desplegable) -->
-    @canany(['VENTAS_HISTORIAL','CLIENTES_CREDITO','REPORTES_VER','CATALOGO_GESTIONAR','STOCK_AJUSTAR'])
-    <div x-data="{ openOperaciones: {{ request()->is('operaciones*', 'inventario*') ? 'true' : 'false' }} }">
+    @canany(['VENTAS_HISTORIAL','CLIENTES_CREDITO','REPORTES_VER','REPORTES_VENTAS','REPORTES_STOCK','REPORTES_CARTERA','REPORTES_COMPRAS','REPORTES_CAJA','REPORTES_FISCAL','CATALOGO_GESTIONAR','STOCK_AJUSTAR'])
+    <div x-data="{ openOperaciones: {{ request()->is('operaciones*', 'inventario*', 'reportes*') ? 'true' : 'false' }} }">
         <button @click="openOperaciones = !openOperaciones" class="flex items-center justify-between w-full rounded-lg py-3 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
             <div class="flex items-center gap-4">
                 <span class="text-lg">📈</span>
@@ -110,6 +110,11 @@
             @endcan
             @endmodulo
            @modulo('reportes_avanzados')
+           @canany(['REPORTES_VENTAS','REPORTES_STOCK','REPORTES_CARTERA','REPORTES_COMPRAS','REPORTES_CAJA','REPORTES_FISCAL'])
+           <a href="{{ route('reportes.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('reportes.*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
+                📑 Centro de Reportes
+            </a>
+           @endcanany
            @can('REPORTES_VER')
            <a href="{{ route('operaciones.reporte_abc') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('operaciones.reporte_abc') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
                 📊 Análisis ABC y Rentabilidad
@@ -130,11 +135,6 @@
             </a>
             @endcanany
             @endmodulo
-            @can('CATALOGO_GESTIONAR')
-            <a href="{{ route('productos.control') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->routeIs('productos.control') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">
-                📦 Control de Productos
-            </a>
-            @endcan
         </div>
     </div>
     @endcanany
@@ -235,7 +235,7 @@
             @can('CLIENTES_GESTIONAR')
             <a href="{{ route('clientes.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('clientes*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">👥 Clientes</a>
             @endcan
-            @can('CLIENTES_GESTIONAR')
+            @can('PADRON_GESTIONAR')
             <a href="{{ route('padron.registros.index') }}" class="flex items-center gap-3 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 {{ request()->is('padron-ruc*') ? 'text-blue-600 dark:text-white font-semibold' : 'text-gray-500' }}">🪪 Padrón de RUC</a>
             @endcan
             @can('CATALOGO_GESTIONAR')

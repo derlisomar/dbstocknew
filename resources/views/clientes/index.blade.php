@@ -61,9 +61,11 @@ html.dark .cli-pie{background:rgba(17,24,39,.55);border-color:#1f2937}
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Administra tu cartera, límites de crédito y categorías.</p>
         </div>
         <div class="flex flex-wrap gap-2">
+        @can('PADRON_GESTIONAR')
         <button @click="openPadron = true" type="button" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2.5 rounded-xl font-bold text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" title="Cargar el padrón de RUC de la DNIT">
             📥 Importar padrón DNIT
         </button>
+        @endcan
         <button @click="openCreate()" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-95 flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             Nuevo Cliente

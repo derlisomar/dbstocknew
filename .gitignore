@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Datos de instalación con claves: nunca al repositorio
+usuario-inicial*.txt
+crear_administrador.sql
+*.bak
