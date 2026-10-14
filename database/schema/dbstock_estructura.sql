@@ -1666,7 +1666,8 @@ CREATE TABLE public.usuarios (
     usu_password character varying(255) NOT NULL,
     usu_activo boolean DEFAULT true,
     creado_en timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    usu_email character varying(150)
+    usu_email character varying(150),
+    remember_token character varying(100)
 );
 
 
@@ -3328,4 +3329,5 @@ INSERT INTO public.migrations (migration, batch) VALUES
 ('2026_10_23_000001_parte16_permisos_reportes', 2),
 ('2026_10_24_000001_parte17_permisos_reportes_compras_caja', 2),
 ('2026_10_25_000001_parte18_permisos_reportes_fiscal', 2),
-('2026_10_26_000001_parte19_ajuste_roles_base', 2);
+('2026_10_26_000001_parte19_ajuste_roles_base', 2),
+('2026_10_27_000001_parte20_usuarios_remember_token', 2);

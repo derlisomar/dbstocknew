@@ -1,13 +1,3 @@
--- dbstock: base de datos INICIAL lista para usar (PostgreSQL 12 o superior).
--- Incluye estructura completa (con unidades, códigos de barra, balanza, padrón de RUC y permisos del Centro de Reportes) y los datos de arranque:
--- permisos, roles (Administrador, Gerente, Cajero, Vendedor, Encargado de stock, Contador), planes y adicionales,
--- sucursal "Casa Central" con depósito y caja, y una categoría. NO incluye usuarios, productos ni clientes.
---
--- Uso:   createdb -U postgres dbStockNew
---        psql -U postgres -d dbStockNew -f dbstock_inicial.sql
---        psql -U postgres -d dbStockNew -f crear_administrador.sql      (crea el usuario administrador)
--- Luego poné los datos de la base en el .env (DB_DATABASE, DB_USERNAME, DB_PASSWORD) y php artisan optimize:clear.
---
 --
 -- PostgreSQL database dump
 --
@@ -1671,7 +1661,8 @@ CREATE TABLE public.usuarios (
     usu_password character varying(255) NOT NULL,
     usu_activo boolean DEFAULT true,
     creado_en timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    usu_email character varying(150)
+    usu_email character varying(150),
+    remember_token character varying(100)
 );
 
 
@@ -2053,545 +2044,476 @@ ALTER TABLE ONLY public.ventas ALTER COLUMN vta_id SET DEFAULT nextval('public.v
 -- Data for Name: auditoria; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.auditoria (aud_id, usu_id, aud_accion, aud_tabla, aud_registro_id, aud_detalle, aud_ip, aud_fecha) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cache; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cache (key, value, expiration) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cache_locks; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cache_locks (key, owner, expiration) FROM stdin;
-\.
 
 
 --
 -- Data for Name: caja_movimientos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.caja_movimientos (mov_id, ses_id, mov_tipo, mov_monto, mov_concepto, mov_fecha, mov_moneda, caj_id_destino, mov_forma_pago, vta_id, cob_id, pag_id) FROM stdin;
-\.
 
 
 --
 -- Data for Name: caja_sesiones; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.caja_sesiones (ses_id, caj_id, usu_id, ses_fecha_apertura, ses_monto_inicial_gs, ses_fecha_cierre, ses_monto_cierre_gs, ses_estado, ses_monto_inicial_usd, ses_monto_inicial_brl, ses_monto_cierre_usd, ses_monto_cierre_brl, ses_monto_esperado_gs, ses_monto_esperado_usd, ses_monto_esperado_brl, ses_esperado_gs, ses_diferencia_gs, ses_esperado_usd, ses_diferencia_usd, ses_esperado_brl, ses_diferencia_brl, ses_observacion_cierre) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cajas; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cajas (caj_id, suc_id, caj_nombre, caj_activa, caj_saldo_gs, caj_saldo_usd, caj_saldo_brl, caj_impresora, caj_tipo_impresion) FROM stdin;
-1	1	Caja 1	t	0.00	0.00	0.00	\N	TICKET_SIMPLE
-\.
+INSERT INTO public.cajas VALUES
+	(1, 1, 'Caja 1', true, 0.00, 0.00, 0.00, NULL, 'TICKET_SIMPLE');
 
 
 --
 -- Data for Name: categorias; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.categorias (cat_id, cat_nombre, cat_descripcion) FROM stdin;
-1	General	\N
-\.
+INSERT INTO public.categorias VALUES
+	(1, 'General', NULL);
 
 
 --
 -- Data for Name: clientes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.clientes (cli_id, cli_nombre, cli_apellido, cli_ruc_ci, cli_telefono, cli_direccion, cli_email, cli_limite_credito, cli_es_mayorista, cli_permitir_credito, cli_bloqueado) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cobranzas; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cobranzas (cob_id, suc_id, cli_id, usu_id, ses_id, cob_fecha, cob_monto_total, cob_estado, cob_formapago, cob_anulada_por, cob_anulada_fecha, cob_motivo_anulacion) FROM stdin;
-\.
 
 
 --
 -- Data for Name: compras; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.compras (com_id, prov_id, usu_id, suc_id, com_fecha, com_nro_documento, com_tipo, com_total, com_estado, com_observacion, com_anulada_por, com_anulada_fecha, com_motivo_anulacion, com_timbrado) FROM stdin;
-\.
 
 
 --
 -- Data for Name: configuracion_sistema; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.configuracion_sistema (cfg_clave, cfg_valor) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cont_asientos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cont_asientos (asi_id, asi_numero, asi_fecha, asi_glosa, asi_origen, asi_clave, asi_estado, usu_id, asi_revierte_id, asi_creado) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cont_cuentas; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cont_cuentas (cue_id, cue_codigo, cue_nombre, cue_tipo, cue_imputable, cue_activa, cue_clave) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cont_lineas; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cont_lineas (lin_id, asi_id, cue_id, lin_debe, lin_haber, lin_detalle) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cont_mapeos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cont_mapeos (map_id, map_tipo, map_clave, cue_id) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cotizaciones; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cotizaciones (cot_id, cot_fecha, cot_dolar, cot_real, cot_activa, creado_en) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cuentas_cobrar; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cuentas_cobrar (cred_id, vta_id, cli_id, cred_monto_total, cred_saldo_pendiente, cred_fecha_emision, cred_fecha_vencimiento, cred_estado) FROM stdin;
-\.
 
 
 --
 -- Data for Name: cuentas_pagar; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.cuentas_pagar (cpa_id, com_id, prov_id, cpa_monto_total, cpa_saldo_pendiente, cpa_fecha_vencimiento, cpa_estado) FROM stdin;
-\.
 
 
 --
 -- Data for Name: demo_solicitudes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.demo_solicitudes (dem_id, dem_nombre, dem_negocio, dem_email, dem_telefono, usu_id, dem_ip, dem_estado, dem_creada, dem_vence, dem_detalle) FROM stdin;
-\.
 
 
 --
 -- Data for Name: depositos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.depositos (dep_id, suc_id, dep_nombre, dep_descripcion, dep_activo) FROM stdin;
-1	1	Depósito principal	\N	t
-\.
+INSERT INTO public.depositos VALUES
+	(1, 1, 'Depósito principal', NULL, true);
 
 
 --
 -- Data for Name: detalle_cobranzas; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.detalle_cobranzas (det_cob_id, cob_id, cred_id, det_monto_pagado) FROM stdin;
-\.
 
 
 --
 -- Data for Name: detalle_compras; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.detalle_compras (dco_id, com_id, pro_id, dco_cantidad, dco_costo, dco_subtotal, dco_devuelta) FROM stdin;
-\.
 
 
 --
 -- Data for Name: detalle_devoluciones; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.detalle_devoluciones (ddv_id, dev_id, det_vta_id, pro_id, ddv_cantidad, ddv_preciounitario, ddv_subtotal) FROM stdin;
-\.
 
 
 --
 -- Data for Name: detalle_presupuestos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.detalle_presupuestos (dpr_id, pre_id, pro_id, dpr_cantidad, dpr_precio, dpr_subtotal) FROM stdin;
-\.
 
 
 --
 -- Data for Name: detalle_ventas; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.detalle_ventas (det_vta_id, vta_id, pro_id, det_cantidad, det_preciounitario, det_subtotal, det_preciocosto) FROM stdin;
-\.
 
 
 --
 -- Data for Name: devoluciones; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.devoluciones (dev_id, vta_id, usu_id, ses_id, dev_fecha, dev_total, dev_motivo) FROM stdin;
-\.
 
 
 --
 -- Data for Name: failed_jobs; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.failed_jobs (id, uuid, connection, queue, payload, exception, failed_at) FROM stdin;
-\.
 
 
 --
 -- Data for Name: ingresos_egresos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.ingresos_egresos (ie_id, ses_id, ie_tipo, ie_monto, ie_concepto, ie_fecha) FROM stdin;
-\.
 
 
 --
 -- Data for Name: job_batches; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.job_batches (id, name, total_jobs, pending_jobs, failed_jobs, failed_job_ids, options, cancelled_at, created_at, finished_at) FROM stdin;
-\.
 
 
 --
 -- Data for Name: jobs; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.jobs (id, queue, payload, attempts, reserved_at, available_at, created_at) FROM stdin;
-\.
 
 
 --
 -- Data for Name: licencia_pagos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.licencia_pagos (lpa_id, plan_id, lpa_fecha, lpa_monto, lpa_forma, lpa_referencia, lpa_desde, lpa_hasta, lpa_vence_anterior, lpa_tipo_anterior, lpa_nota, lpa_estado, lpa_creado, lpa_anulado_fecha, lpa_motivo_anulacion) FROM stdin;
-\.
 
 
 --
 -- Data for Name: migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.migrations (id, migration, batch) FROM stdin;
-1	0001_01_01_000000_create_users_table	1
-2	0001_01_01_000001_create_cache_table	1
-3	0001_01_01_000002_create_jobs_table	1
-4	2026_10_09_000001_parte2_caja_ventas_auditoria	1
-5	2026_10_10_000001_parte3_cobros_auditoria	1
-6	2026_10_11_000001_parte4_stock_movimientos	1
-7	2026_10_12_000001_parte5_compras	1
-8	2026_10_13_000001_parte6_presupuestos	1
-9	2026_10_13_000002_parte6_corregir_presupuestos	1
-10	2026_10_14_000001_parte8_panel_vendedor	1
-11	2026_10_15_000001_parte9_demo_solicitudes	1
-12	2026_10_16_000001_parte10_contabilidad	1
-13	2026_10_17_000001_parte11_planes_publicos	1
-14	2026_10_19_000001_parte12_roles_base	1
-15	2026_10_20_000001_parte13_demo_detalle	1
-16	2026_10_21_000001_parte14_unidades_y_codigos	1
-17	2026_10_22_000001_parte15_padron_ruc	2
-18	2026_10_18_000001_parte11_planes_definitivos	3
-19	2026_10_23_000001_parte16_permisos_reportes	4
-20	2026_10_24_000001_parte17_permisos_reportes_compras_caja	5
-21	2026_10_25_000001_parte18_permisos_reportes_fiscal	6
-22	2026_10_26_000001_parte19_ajuste_roles_base	7
-\.
+INSERT INTO public.migrations VALUES
+	(1, '0001_01_01_000000_create_users_table', 1),
+	(2, '0001_01_01_000001_create_cache_table', 1),
+	(3, '0001_01_01_000002_create_jobs_table', 1),
+	(4, '2026_10_09_000001_parte2_caja_ventas_auditoria', 1),
+	(5, '2026_10_10_000001_parte3_cobros_auditoria', 1),
+	(6, '2026_10_11_000001_parte4_stock_movimientos', 1),
+	(7, '2026_10_12_000001_parte5_compras', 1),
+	(8, '2026_10_13_000001_parte6_presupuestos', 1),
+	(9, '2026_10_13_000002_parte6_corregir_presupuestos', 1),
+	(10, '2026_10_14_000001_parte8_panel_vendedor', 1),
+	(11, '2026_10_15_000001_parte9_demo_solicitudes', 1),
+	(12, '2026_10_16_000001_parte10_contabilidad', 1),
+	(13, '2026_10_17_000001_parte11_planes_publicos', 1),
+	(14, '2026_10_19_000001_parte12_roles_base', 1),
+	(15, '2026_10_20_000001_parte13_demo_detalle', 1),
+	(16, '2026_10_21_000001_parte14_unidades_y_codigos', 1),
+	(17, '2026_10_22_000001_parte15_padron_ruc', 2),
+	(18, '2026_10_18_000001_parte11_planes_definitivos', 3),
+	(19, '2026_10_23_000001_parte16_permisos_reportes', 4),
+	(20, '2026_10_24_000001_parte17_permisos_reportes_compras_caja', 5),
+	(21, '2026_10_25_000001_parte18_permisos_reportes_fiscal', 6),
+	(22, '2026_10_26_000001_parte19_ajuste_roles_base', 7),
+	(23, '2026_10_27_000001_parte20_usuarios_remember_token', 8);
 
 
 --
 -- Data for Name: padron_ruc; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.padron_ruc (pad_ruc, pad_dv, pad_nombre, pad_estado) FROM stdin;
-\.
 
 
 --
 -- Data for Name: pagos_proveedores; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.pagos_proveedores (pag_id, cpa_id, prov_id, usu_id, ses_id, pag_fecha, pag_monto, pag_forma_pago, pag_referencia, pag_estado, pag_anulado_por, pag_anulado_fecha, pag_motivo_anulacion) FROM stdin;
-\.
 
 
 --
 -- Data for Name: password_reset_tokens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.password_reset_tokens (email, token, created_at) FROM stdin;
-\.
 
 
 --
 -- Data for Name: permisos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.permisos (perm_id, perm_codigo, perm_descripcion, perm_modulo) FROM stdin;
-1	USUARIOS_GESTIONAR	Crear, editar y desactivar usuarios; administrar roles y permisos	USUARIOS
-2	CONFIG_GESTIONAR	Sucursales, cajas, depósitos, cotización y terminal	CONFIGURACION
-3	CATALOGO_GESTIONAR	Productos, categorías, proveedores y promociones	CATALOGO
-4	CLIENTES_GESTIONAR	Alta, edición y baja de clientes	CLIENTES
-5	PADRON_GESTIONAR	Importar, editar y eliminar registros del padrón de RUC (la consulta al cargar clientes no lo necesita)	CLIENTES
-6	CLIENTES_CREDITO	Habilitar crédito, fijar límite, marcar mayorista y bloquear clientes	CLIENTES
-7	PDV_USAR	Vender en el punto de venta	VENTAS
-8	VENTAS_HISTORIAL	Ver y exportar el historial de ventas	VENTAS
-9	VENTAS_ANULAR	Anular ventas	VENTAS
-10	VENTAS_DEVOLVER	Procesar devoluciones de ventas	VENTAS
-11	COBRANZAS_ANULAR	Anular cobros ya registrados (devuelve la deuda al cliente)	COBRANZAS
-12	COBRANZAS_REGISTRAR	Cobrar cuentas a crédito	COBRANZAS
-13	CAJA_ABRIR_CERRAR	Abrir y cerrar caja	FINANZAS
-14	CAJA_TRANSFERIR	Transferir dinero entre cajas	FINANZAS
-15	CAJA_INGRESO_EGRESO	Registrar ingresos y egresos extra de caja	FINANZAS
-16	FINANZAS_VER	Ver movimientos, cierres e ingresos/egresos	FINANZAS
-17	CAJA_OPERAR_AJENA	Cerrar, transferir y registrar movimientos en cajas abiertas por otra persona (responsable)	FINANZAS
-18	AUDITORIA_VER	Ver el registro de auditoría (quién hizo qué)	AUDITORIA
-19	STOCK_AJUSTAR	Ajustar stock, ingresar mercadería y hacer conteos (queda en el historial)	CATALOGO
-20	COMPRAS_REGISTRAR	Registrar compras a proveedores y ver el listado de compras	COMPRAS
-21	COMPRAS_ANULAR	Anular compras y devolver mercadería al proveedor	COMPRAS
-22	PAGOS_PROVEEDORES	Ver cuentas a pagar y registrar o anular pagos a proveedores	COMPRAS
-23	PRESUPUESTOS_GESTIONAR	Crear, editar, aceptar, rechazar y renovar presupuestos (quien vende en caja puede verlos y convertirlos en venta)	VENTAS
-24	CONTABILIDAD_VER	Ver libro diario, mayor, balances y libro IVA	CONTABILIDAD
-25	CONTABILIDAD_GESTIONAR	Plan de cuentas, mapeos, asientos manuales de ajuste y cierre de períodos	CONTABILIDAD
-26	REPORTES_VER	Ver reportes (rentabilidad / curva ABC)	REPORTES
-27	REPORTES_VENTAS	Ver reportes de ventas (por período, cajero, forma de pago, categoría, horas pico, anulaciones)	REPORTES
-28	REPORTES_STOCK	Ver reportes de stock (valorizado, reposición, vencimientos, kardex, ajustes)	REPORTES
-29	REPORTES_CARTERA	Ver reportes de clientes y cartera (cuentas por cobrar, cobranzas, mejores clientes, límites de crédito)	REPORTES
-30	REPORTES_COSTOS	Ver costos, utilidades y márgenes dentro de los reportes	REPORTES
-31	REPORTES_EXPORTAR	Descargar reportes en Excel y PDF	REPORTES
-32	REPORTES_COMPRAS	Ver reportes de compras y proveedores (compras, cuentas por pagar, pagos, evolución de costos)	REPORTES
-33	REPORTES_CAJA	Ver reportes de caja y finanzas (cierres, faltantes y sobrantes, flujo de caja)	REPORTES
-34	REPORTES_FISCAL	Ver reportes fiscales (libros de IVA, resumen de IVA, facturas por timbrado, numeración, vigencia de timbrados)	REPORTES
-\.
+INSERT INTO public.permisos VALUES
+	(1, 'USUARIOS_GESTIONAR', 'Crear, editar y desactivar usuarios; administrar roles y permisos', 'USUARIOS'),
+	(2, 'CONFIG_GESTIONAR', 'Sucursales, cajas, depósitos, cotización y terminal', 'CONFIGURACION'),
+	(3, 'CATALOGO_GESTIONAR', 'Productos, categorías, proveedores y promociones', 'CATALOGO'),
+	(4, 'CLIENTES_GESTIONAR', 'Alta, edición y baja de clientes', 'CLIENTES'),
+	(5, 'PADRON_GESTIONAR', 'Importar, editar y eliminar registros del padrón de RUC (la consulta al cargar clientes no lo necesita)', 'CLIENTES'),
+	(6, 'CLIENTES_CREDITO', 'Habilitar crédito, fijar límite, marcar mayorista y bloquear clientes', 'CLIENTES'),
+	(7, 'PDV_USAR', 'Vender en el punto de venta', 'VENTAS'),
+	(8, 'VENTAS_HISTORIAL', 'Ver y exportar el historial de ventas', 'VENTAS'),
+	(9, 'VENTAS_ANULAR', 'Anular ventas', 'VENTAS'),
+	(10, 'VENTAS_DEVOLVER', 'Procesar devoluciones de ventas', 'VENTAS'),
+	(11, 'COBRANZAS_ANULAR', 'Anular cobros ya registrados (devuelve la deuda al cliente)', 'COBRANZAS'),
+	(12, 'COBRANZAS_REGISTRAR', 'Cobrar cuentas a crédito', 'COBRANZAS'),
+	(13, 'CAJA_ABRIR_CERRAR', 'Abrir y cerrar caja', 'FINANZAS'),
+	(14, 'CAJA_TRANSFERIR', 'Transferir dinero entre cajas', 'FINANZAS'),
+	(15, 'CAJA_INGRESO_EGRESO', 'Registrar ingresos y egresos extra de caja', 'FINANZAS'),
+	(16, 'FINANZAS_VER', 'Ver movimientos, cierres e ingresos/egresos', 'FINANZAS'),
+	(17, 'CAJA_OPERAR_AJENA', 'Cerrar, transferir y registrar movimientos en cajas abiertas por otra persona (responsable)', 'FINANZAS'),
+	(18, 'AUDITORIA_VER', 'Ver el registro de auditoría (quién hizo qué)', 'AUDITORIA'),
+	(19, 'STOCK_AJUSTAR', 'Ajustar stock, ingresar mercadería y hacer conteos (queda en el historial)', 'CATALOGO'),
+	(20, 'COMPRAS_REGISTRAR', 'Registrar compras a proveedores y ver el listado de compras', 'COMPRAS'),
+	(21, 'COMPRAS_ANULAR', 'Anular compras y devolver mercadería al proveedor', 'COMPRAS'),
+	(22, 'PAGOS_PROVEEDORES', 'Ver cuentas a pagar y registrar o anular pagos a proveedores', 'COMPRAS'),
+	(23, 'PRESUPUESTOS_GESTIONAR', 'Crear, editar, aceptar, rechazar y renovar presupuestos (quien vende en caja puede verlos y convertirlos en venta)', 'VENTAS'),
+	(24, 'CONTABILIDAD_VER', 'Ver libro diario, mayor, balances y libro IVA', 'CONTABILIDAD'),
+	(25, 'CONTABILIDAD_GESTIONAR', 'Plan de cuentas, mapeos, asientos manuales de ajuste y cierre de períodos', 'CONTABILIDAD'),
+	(26, 'REPORTES_VER', 'Ver reportes (rentabilidad / curva ABC)', 'REPORTES'),
+	(27, 'REPORTES_VENTAS', 'Ver reportes de ventas (por período, cajero, forma de pago, categoría, horas pico, anulaciones)', 'REPORTES'),
+	(28, 'REPORTES_STOCK', 'Ver reportes de stock (valorizado, reposición, vencimientos, kardex, ajustes)', 'REPORTES'),
+	(29, 'REPORTES_CARTERA', 'Ver reportes de clientes y cartera (cuentas por cobrar, cobranzas, mejores clientes, límites de crédito)', 'REPORTES'),
+	(30, 'REPORTES_COSTOS', 'Ver costos, utilidades y márgenes dentro de los reportes', 'REPORTES'),
+	(31, 'REPORTES_EXPORTAR', 'Descargar reportes en Excel y PDF', 'REPORTES'),
+	(32, 'REPORTES_COMPRAS', 'Ver reportes de compras y proveedores (compras, cuentas por pagar, pagos, evolución de costos)', 'REPORTES'),
+	(33, 'REPORTES_CAJA', 'Ver reportes de caja y finanzas (cierres, faltantes y sobrantes, flujo de caja)', 'REPORTES'),
+	(34, 'REPORTES_FISCAL', 'Ver reportes fiscales (libros de IVA, resumen de IVA, facturas por timbrado, numeración, vigencia de timbrados)', 'REPORTES');
 
 
 --
 -- Data for Name: plan_adicionales; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.plan_adicionales (ada_id, ada_nombre, ada_precio, ada_periodo, ada_orden, ada_activo) FROM stdin;
-1	Usuario adicional	25000.00	mes	1	t
-2	Caja adicional	45000.00	mes	2	t
-3	Sucursal adicional	89000.00	mes	3	t
-\.
+INSERT INTO public.plan_adicionales VALUES
+	(1, 'Usuario adicional', 25000.00, 'mes', 1, true),
+	(2, 'Caja adicional', 45000.00, 'mes', 2, true),
+	(3, 'Sucursal adicional', 89000.00, 'mes', 3, true);
 
 
 --
 -- Data for Name: planes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.planes (plan_id, plan_nombre, plan_descripcion, plan_edicion, plan_modulos, plan_precio, plan_meses, plan_max_sucursales, plan_max_cajas, plan_max_usuarios, plan_activo, plan_publico, plan_destacado, plan_orden, plan_etiqueta, plan_boton, plan_caracteristicas) FROM stdin;
-1	Inicio	Para arrancar o trabajar solo.	BASICA	\N	150000.00	1	1	1	1	t	t	f	1	\N	Probar este plan	Punto de venta, contado y crédito\nCaja con apertura y cierre\nClientes, productos y cobranzas\nPresupuestos con fecha de validez\nInventario y ajustes de stock\n-Compras y proveedores\n-Contabilidad integrada
-2	Negocio	Para un local con equipo.	BASICA	\N	220000.00	1	1	2	3	t	t	f	2	\N	Probar este plan	Todo lo del plan Inicio\nDos cajas para atender al mismo tiempo\nHasta 3 usuarios con permisos por rol\n-Compras y proveedores\n-Contabilidad integrada
-3	Crecimiento	Para abrir tu segunda sucursal y crecer con control.	COMPLETA	\N	350000.00	1	2	4	6	t	t	t	3	Recomendado	Probar este plan	Todo lo del plan Negocio\nHasta 2 sucursales\nCompras, proveedores y cuentas a pagar\nPromociones y descuentos con fechas\nReportes de rentabilidad y curva ABC\nVentas en guaraníes, dólares y reales\nContabilidad: asientos automáticos, balances y libro IVA
-4	Empresa	Para varias sucursales y equipos grandes.	COMPLETA	\N	480000.00	1	3	7	10	t	t	f	4	\N	Probar este plan	Todo lo del plan Crecimiento\nHasta 3 sucursales con control por sucursal\nHasta 7 cajas y 10 usuarios\nTodo el equipo trabajando al mismo tiempo
-5	A medida	Para más de 3 sucursales o necesidades propias.	COMPLETA	\N	0.00	1	0	0	0	t	t	f	5	\N	Consultar	Todo lo del plan Empresa\nSucursales, cajas y usuarios según tu necesidad\nSe arma con los adicionales de usuario, caja y sucursal
-\.
+INSERT INTO public.planes VALUES
+	(1, 'Inicio', 'Para arrancar o trabajar solo.', 'BASICA', NULL, 150000.00, 1, 1, 1, 1, true, true, false, 1, NULL, 'Probar este plan', 'Punto de venta, contado y crédito
+Caja con apertura y cierre
+Clientes, productos y cobranzas
+Presupuestos con fecha de validez
+Inventario y ajustes de stock
+-Compras y proveedores
+-Contabilidad integrada'),
+	(2, 'Negocio', 'Para un local con equipo.', 'BASICA', NULL, 220000.00, 1, 1, 2, 3, true, true, false, 2, NULL, 'Probar este plan', 'Todo lo del plan Inicio
+Dos cajas para atender al mismo tiempo
+Hasta 3 usuarios con permisos por rol
+-Compras y proveedores
+-Contabilidad integrada'),
+	(3, 'Crecimiento', 'Para abrir tu segunda sucursal y crecer con control.', 'COMPLETA', NULL, 350000.00, 1, 2, 4, 6, true, true, true, 3, 'Recomendado', 'Probar este plan', 'Todo lo del plan Negocio
+Hasta 2 sucursales
+Compras, proveedores y cuentas a pagar
+Promociones y descuentos con fechas
+Reportes de rentabilidad y curva ABC
+Ventas en guaraníes, dólares y reales
+Contabilidad: asientos automáticos, balances y libro IVA'),
+	(4, 'Empresa', 'Para varias sucursales y equipos grandes.', 'COMPLETA', NULL, 480000.00, 1, 3, 7, 10, true, true, false, 4, NULL, 'Probar este plan', 'Todo lo del plan Crecimiento
+Hasta 3 sucursales con control por sucursal
+Hasta 7 cajas y 10 usuarios
+Todo el equipo trabajando al mismo tiempo'),
+	(5, 'A medida', 'Para más de 3 sucursales o necesidades propias.', 'COMPLETA', NULL, 0.00, 1, 0, 0, 0, true, true, false, 5, NULL, 'Consultar', 'Todo lo del plan Empresa
+Sucursales, cajas y usuarios según tu necesidad
+Se arma con los adicionales de usuario, caja y sucursal');
 
 
 --
 -- Data for Name: presupuestos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.presupuestos (pre_id, cli_id, pre_cliente_nombre, usu_id, suc_id, pre_fecha, pre_validez_dias, pre_fecha_vencimiento, pre_total, pre_estado, pre_observacion, pre_condiciones, pre_aceptado_fecha, pre_rechazo_motivo, vta_id, pre_facturado_fecha) FROM stdin;
-\.
 
 
 --
 -- Data for Name: producto_codigos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.producto_codigos (cod_id, pro_id, cod_codigo) FROM stdin;
-\.
 
 
 --
 -- Data for Name: productos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.productos (pro_id, cat_id, prov_id, suc_id, dep_id, pro_codigo, pro_nombre, pro_descripcion, pro_preciocosto, pro_precioventa, pro_activo, pro_stockactual, pro_stockminimo, pro_preciomayorista, pro_fechavencimiento, pro_imagen, pro_permite_mayorista, pro_en_promocion, pro_precio_promocional, pro_tipo_iva, pro_unidad, pro_plu) FROM stdin;
-\.
 
 
 --
 -- Data for Name: promociones; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.promociones (prom_id, prom_nombre, prom_tipo_descuento, prom_valor, prom_fecha_inicio, prom_fecha_fin, prom_aplica_a, cat_id, pro_id, prom_activa) FROM stdin;
-\.
 
 
 --
 -- Data for Name: proveedores; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.proveedores (prov_id, prov_razonsocial, prov_ruc, prov_telefono, prov_email, prov_direccion) FROM stdin;
-\.
 
 
 --
 -- Data for Name: rol_permisos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.rol_permisos (rol_id, perm_id) FROM stdin;
-2	3
-2	4
-2	5
-2	6
-2	7
-2	8
-2	9
-2	10
-2	11
-2	12
-2	13
-2	14
-2	15
-2	16
-2	17
-2	18
-2	19
-2	20
-2	21
-2	22
-2	23
-2	26
-3	4
-3	7
-3	8
-3	12
-3	13
-3	15
-3	23
-4	4
-4	23
-5	3
-5	19
-5	20
-6	8
-6	16
-6	18
-6	22
-6	24
-6	25
-6	26
-2	27
-2	28
-2	29
-2	30
-2	31
-6	27
-6	28
-6	29
-6	30
-6	31
-5	28
-5	31
-2	32
-2	33
-6	32
-6	33
-5	32
-2	34
-6	34
-4	7
-4	13
-4	12
-\.
+INSERT INTO public.rol_permisos VALUES
+	(2, 3),
+	(2, 4),
+	(2, 5),
+	(2, 6),
+	(2, 7),
+	(2, 8),
+	(2, 9),
+	(2, 10),
+	(2, 11),
+	(2, 12),
+	(2, 13),
+	(2, 14),
+	(2, 15),
+	(2, 16),
+	(2, 17),
+	(2, 18),
+	(2, 19),
+	(2, 20),
+	(2, 21),
+	(2, 22),
+	(2, 23),
+	(2, 26),
+	(3, 4),
+	(3, 7),
+	(3, 8),
+	(3, 12),
+	(3, 13),
+	(3, 15),
+	(3, 23),
+	(4, 4),
+	(4, 23),
+	(5, 3),
+	(5, 19),
+	(5, 20),
+	(6, 8),
+	(6, 16),
+	(6, 18),
+	(6, 22),
+	(6, 24),
+	(6, 25),
+	(6, 26),
+	(2, 27),
+	(2, 28),
+	(2, 29),
+	(2, 30),
+	(2, 31),
+	(6, 27),
+	(6, 28),
+	(6, 29),
+	(6, 30);
+INSERT INTO public.rol_permisos VALUES
+	(6, 31),
+	(5, 28),
+	(5, 31),
+	(2, 32),
+	(2, 33),
+	(6, 32),
+	(6, 33),
+	(5, 32),
+	(2, 34),
+	(6, 34),
+	(4, 7),
+	(4, 13),
+	(4, 12);
 
 
 --
 -- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.roles (rol_id, rol_nombre, rol_descripcion, creado_en) FROM stdin;
-1	Administrador	Acceso total al sistema	2026-10-12 13:14:35.568989
-2	Gerente	Supervisa todo el negocio: ventas, caja, compras, reportes y auditoría. No administra usuarios ni configuración.	2026-10-12 13:14:35.593841
-3	Cajero	Vende y cobra en el punto de venta, abre y cierra su caja y cobra cuentas a crédito.	2026-10-12 13:14:35.631518
-4	Vendedor	Atiende clientes y arma presupuestos. No maneja dinero: el cajero los convierte en venta y cobra.	2026-10-12 13:14:35.641157
-5	Encargado de stock	Carga productos, recibe mercadería, registra compras y ajusta el stock.	2026-10-12 13:14:35.646323
-6	Contador	Contabilidad, libro IVA y reportes. Ve las ventas y la caja, pero no vende ni cobra.	2026-10-12 13:14:35.65223
-\.
+INSERT INTO public.roles VALUES
+	(1, 'Administrador', 'Acceso total al sistema', '2026-10-12 13:14:35.568989'),
+	(2, 'Gerente', 'Supervisa todo el negocio: ventas, caja, compras, reportes y auditoría. No administra usuarios ni configuración.', '2026-10-12 13:14:35.593841'),
+	(3, 'Cajero', 'Vende y cobra en el punto de venta, abre y cierra su caja y cobra cuentas a crédito.', '2026-10-12 13:14:35.631518'),
+	(4, 'Vendedor', 'Atiende clientes y arma presupuestos. No maneja dinero: el cajero los convierte en venta y cobra.', '2026-10-12 13:14:35.641157'),
+	(5, 'Encargado de stock', 'Carga productos, recibe mercadería, registra compras y ajusta el stock.', '2026-10-12 13:14:35.646323'),
+	(6, 'Contador', 'Contabilidad, libro IVA y reportes. Ve las ventas y la caja, pero no vende ni cobra.', '2026-10-12 13:14:35.65223');
 
 
 --
 -- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.sessions (id, user_id, ip_address, user_agent, payload, last_activity) FROM stdin;
-\.
 
 
 --
 -- Data for Name: stock_movimientos; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.stock_movimientos (smo_id, pro_id, smo_tipo, smo_cantidad, smo_stock_resultante, smo_motivo, smo_referencia, usu_id, smo_fecha) FROM stdin;
-\.
 
 
 --
 -- Data for Name: sucursales; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.sucursales (suc_id, suc_nombre, suc_direccion, suc_telefono, suc_activa, suc_actividad_economica, suc_timbrado, suc_timbrado_inicio, suc_timbrado_fin, suc_est_punto_exp, suc_factura_secuencia) FROM stdin;
-1	Casa central	\N	\N	t	\N	\N	\N	\N	001-001	1
-\.
+INSERT INTO public.sucursales VALUES
+	(1, 'Casa central', NULL, NULL, true, NULL, NULL, NULL, NULL, '001-001', 1);
 
 
 --
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.users (id, name, email, email_verified_at, password, remember_token, created_at, updated_at) FROM stdin;
-\.
 
 
 --
 -- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.usuarios (usu_id, rol_id, usu_cedula, usu_nombre, usu_apellido, usu_usuario, usu_password, usu_activo, creado_en, usu_email) FROM stdin;
-\.
 
 
 --
 -- Data for Name: ventas; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.ventas (vta_id, suc_id, cli_id, usu_id, ses_id, vta_fecha, vta_tipo, vta_total, vta_estado, vta_formapago, vta_timbrado, vta_nro_factura, vta_total_exenta, vta_total_iva5, vta_total_iva10, vta_cdc, vta_sifen_estado, nro_transferencia, vta_moneda, vta_anulada_por, vta_anulada_fecha, vta_motivo_anulacion) FROM stdin;
-\.
 
 
 --
@@ -2787,7 +2709,7 @@ SELECT pg_catalog.setval('public.licencia_pagos_lpa_id_seq', 1, false);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 22, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 23, true);
 
 
 --

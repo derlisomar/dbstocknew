@@ -36,6 +36,16 @@ class User extends Authenticatable
         return $this->usu_password;
     }
 
+    /**
+     * Nombre real de la columna de clave. Laravel lo usa al re-cifrar la clave
+     * en el login (cuando el hash guardado tiene otro costo); sin esto intenta
+     * actualizar una columna "password" que no existe.
+     */
+    public function getAuthPasswordName()
+    {
+        return 'usu_password';
+    }
+
     public function rol()
     {
         return $this->belongsTo(Rol::class, 'rol_id', 'rol_id');

@@ -229,4 +229,20 @@ class AccesoYPermisosTest extends TestCase
         // ni renombrar un rol cualquiera a "Administrador"
         $this->actingAs($gestor)->post('/roles', ['rol_nombre' => 'administrador'])->assertForbidden();
     }
+
+    public function test_login_con_hash_de_otro_costo_lo_actualiza_en_usu_password(): void
+    {
+        // Hash bcrypt de costo 10 (como la clave temporal de crear_administrador.sql):
+        // Laravel lo re-cifra al entrar y debe escribir en usu_password, no en "password".
+        $u = $this->usuario('Administrador', [], [
+            'usu_password' => password_hash('clave-segura-1', PASSWORD_BCRYPT, ['cost' => 10]),
+        ]);
+
+        $this->post('/login', ['login_input' => $u->usu_usuario, 'password' => 'clave-segura-1'])
+            ->assertRedirect();
+
+        $this->assertAuthenticatedAs($u->fresh());
+        $this->assertStringStartsNotWith('$2y$10$', $u->fresh()->usu_password);
+        $this->assertTrue(Hash::check('clave-segura-1', $u->fresh()->usu_password));
+    }
 }
